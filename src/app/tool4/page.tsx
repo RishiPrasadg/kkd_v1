@@ -112,11 +112,20 @@ const BOUQUET_LAYOUT = [
 ];
 const CONV = { x: 115, y: 200 }; // stem convergence point
 
-function FlowerBouquet({ flower }: { flower: FlowerChoice }) {
+const FLOWER_EMOJI: Record<FlowerChoice, string> = {
+  tulips: "🌷",
+  lilies: "🌸",
+  jasmine: "🤍",
+  peonies: "🌺",
+  sunflowers: "🌻",
+};
+
+function FlowerBouquet({ flower, compact }: { flower: FlowerChoice; compact?: boolean }) {
   const ribbon = RIBBON_COLORS[flower];
+  const maxW = compact ? "55%" : "100%";
 
   return (
-    <div style={{ position: "relative", width: "100%" }}>
+    <div style={{ position: "relative", width: maxW, margin: "0 auto" }}>
       {/* Watercolor bouquet — mix-blend-mode:multiply removes the white background */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -130,7 +139,18 @@ function FlowerBouquet({ flower }: { flower: FlowerChoice }) {
           display: "block",
         }}
       />
-      {/* Small ribbon accent at the stem tie, colour matches selection */}
+      {/* Flower emoji overlay to show selection */}
+      <div style={{
+        position: "absolute",
+        top: "8%",
+        left: "50%",
+        transform: "translateX(-50%)",
+        fontSize: compact ? 28 : 36,
+        textShadow: `0 2px 8px ${ribbon}66`,
+      }}>
+        {FLOWER_EMOJI[flower]}
+      </div>
+      {/* Ribbon accent at the stem tie, colour matches selection */}
       <svg
         viewBox="0 0 220 30"
         style={{ position: "absolute", bottom: "8%", left: 0, width: "100%", height: "12%", overflow: "visible" }}
@@ -256,7 +276,7 @@ function FinalCard({
         {/* Image or Bouquet — capped so it never pushes poem out */}
         <div
           className="flex-shrink-0 flex items-center justify-center overflow-hidden"
-          style={{ width: "100%", maxHeight: "32%", marginBottom: 6 }}
+          style={{ width: "100%", maxHeight: "28%", marginBottom: 6 }}
         >
           {imageDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -273,7 +293,7 @@ function FinalCard({
               }}
             />
           ) : flowerChoice ? (
-            <FlowerBouquet flower={flowerChoice} />
+            <FlowerBouquet flower={flowerChoice} compact />
           ) : null}
         </div>
 
