@@ -33,23 +33,23 @@ const CARD_BG: Record<CardStyleId, string> = {
 // Padding to stay inside each frame's border area.
 // These are set generously — each frame image has a different border thickness.
 const CARD_PADDING: Record<CardStyleId, { x: number; y: number }> = {
-  1: { x: 46, y: 42 }, // simple leaf/flower frame  — thin border
-  2: { x: 58, y: 54 }, // green stitched frame       — medium border
-  3: { x: 72, y: 68 }, // rich watercolour frame     — very thick border
-  4: { x: 64, y: 58 }, // pink ribbon frame          — medium-thick border
+  1: { x: 50, y: 46 }, // floral leaf border frame
+  2: { x: 36, y: 36 }, // pastel stars frame — thin border
+  3: { x: 24, y: 24 }, // corner vine frame — minimal border
+  4: { x: 40, y: 28 }, // left floral strip — left padding larger
 };
 
 const STYLE_LABELS: Record<CardStyleId, string> = {
-  1: "Garden Frame",
-  2: "Hand-Painted",
-  3: "Watercolour",
-  4: "Pink Ribbon",
+  1: "Floral Border",
+  2: "Starry",
+  3: "Corner Vine",
+  4: "Pink Garden",
 };
 const STYLE_DESCS: Record<CardStyleId, string> = {
-  1: "Soft & botanical",
-  2: "Illustrated charm",
-  3: "Lush & romantic",
-  4: "Sweet & delicate",
+  1: "Classic & warm",
+  2: "Soft & dreamy",
+  3: "Minimal & elegant",
+  4: "Rustic & pretty",
 };
 
 // ─── Style Thumbnail ─────────────────────────────────────────────────────────
