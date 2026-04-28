@@ -11,30 +11,31 @@ const tools = [
     ready: true,
   },
   {
-    title: "Pose Puzzle",
+    title: "Spin & Hit",
     description:
-      "Complete the yoga pose by picking the right final step. Test your pose knowledge!",
+      "The wheel is spinning with healthy & junk food — tap at the right moment to score big!",
     href: "/puzzle",
-    icon: "🧩",
+    icon: "🎯",
     color: "bg-[#F0E8DF] border-[#E0D5C8] hover:border-[#C4B5A6]",
     ready: true,
   },
   {
-    title: "Desi Ghar Bingo",
+    title: "How Desi Is Your Household?",
     description:
-      "9 cheezein. Ek ghar. Kitna desi hai tera ghar? Tap the things you have at home.",
+      "9 things. One house. Tap everything that's in your home and find out your Desi score.",
     href: "/tool3",
     icon: "🏠",
-    color: "bg-[#FEF3D9] border-[#F5A623] hover:border-[#C47D10]",
+    color: "bg-[#FFFFE0] border-[#E8C84A] hover:border-[#C47D10]",
     ready: true,
   },
   {
-    title: "Coming Soon",
-    description: "One more surprise in store. Check back soon!",
+    title: "Mother's Day Card",
+    description:
+      "Create a beautiful, personal card for her — watercolour art, handwritten poem, ready to share on WhatsApp.",
     href: "/tool4",
-    icon: "🎵",
-    color: "bg-[#F0EAE2] border-[#E0D8CE] hover:border-[#C4B5A6]",
-    ready: false,
+    icon: "🌸",
+    color: "bg-[#FFF0F3] border-[#F5C6D0] hover:border-[#E8A0A0]",
+    ready: true,
   },
 ];
 

@@ -2,20 +2,19 @@
 
 import { useRef } from "react";
 import type { Result } from "@/lib/scoring";
-import { ResultMascot } from "./illustrations/Character";
 
-const RESULT_GRADIENTS: Record<string, { from: string; to: string; accent: string }> = {
-  mast: { from: "#E8EFE6", to: "#D4E4D0", accent: "#5B8F8F" },
-  chalti: { from: "#F2E8DC", to: "#E8DCC8", accent: "#C4A24E" },
-  signals: { from: "#F0E4D4", to: "#E4CEBF", accent: "#B8705A" },
-  badi: { from: "#EEDDD0", to: "#DEC8B4", accent: "#8B4513" },
+const RESULT_GRADIENTS: Record<string, { accent: string; label: string }> = {
+  mast: { accent: "#3D7A6B", label: "#2A5C50" },
+  chalti: { accent: "#8B6B2A", label: "#6B5020" },
+  signals: { accent: "#9E5E4B", label: "#7A4535" },
+  badi: { accent: "#7A3010", label: "#5C2008" },
 };
 
 const PUNCHY_DIALOGUES: Record<string, string> = {
-  mast: "Mera toh Yoga Age kam nikla! Tera kitna aayega? Check kar na!",
-  chalti: "Body bol rahi hai kuch... Tera bhi sun le. Apna Yoga Age check kar!",
-  signals: "Meri body ne warning di hai bhai. Tu bhi check karle apna Yoga Age!",
-  badi: "Yaar meri body ne RED alert de diya! Tu bhi check kar — dar mat.",
+  mast: "My body is younger than my age. What's yours?",
+  chalti: "My body is sending signals. Is yours too?",
+  signals: "My body gave me a warning. Time to find out yours.",
+  badi: "My body sent a RED alert. Don't ignore yours — find out now.",
 };
 
 export default function ShareCard({ result }: { result: Result }) {
@@ -24,51 +23,48 @@ export default function ShareCard({ result }: { result: Result }) {
   const dialogue = PUNCHY_DIALOGUES[result.resultKey] || PUNCHY_DIALOGUES.chalti;
 
   return (
-    <div className="w-full max-w-xs mx-auto">
+    <div className="w-full max-w-sm mx-auto">
       <div
         ref={cardRef}
-        className="aspect-square rounded-2xl p-5 flex flex-col overflow-hidden relative"
+        className="aspect-square rounded-3xl p-7 flex flex-col overflow-hidden relative shadow-xl"
         style={{
-          background: `linear-gradient(145deg, ${grad.from}, ${grad.to})`,
+          background:
+            "radial-gradient(ellipse at 55% 25%, #D94F2C 0%, #E86B2B 22%, #F5923B 44%, #F9BF7A 65%, #FDE0B8 82%, #FDF3EB 100%)",
         }}
       >
         {/* Top label */}
-        <p className="text-[10px] uppercase tracking-[0.2em] text-muted/60 text-center">
+        <p className="text-[10px] uppercase tracking-[0.25em] text-white/60 text-center font-medium">
           Yoga Age Result
         </p>
 
         {/* Center content */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-1">
-          {/* Mascot */}
-          <ResultMascot resultKey={result.resultKey} />
-
+        <div className="flex-1 flex flex-col items-center justify-center gap-2">
           {/* Big number */}
-          <p
-            className="font-display text-6xl leading-none mt-1"
-            style={{ color: grad.accent }}
-          >
+          <p className="font-display text-[5.5rem] leading-none text-white drop-shadow-lg">
             {result.yogaAge}
           </p>
 
           {/* Personality */}
-          <p className="text-sm font-medium text-dark/80 mt-1">
+          <p className="text-base font-medium text-white/90 mt-1 tracking-wide">
             {result.emoji} {result.personality}
+          </p>
+
+          {/* Tagline */}
+          <p className="text-[12px] text-white/70 text-center leading-snug mt-1 max-w-[200px]">
+            {result.tagline}
           </p>
         </div>
 
         {/* Punchy dialogue */}
         <div className="mt-auto">
-          <p className="text-[11px] text-dark/70 leading-snug text-center mb-3 px-2">
+          <p className="text-[11px] text-stone-700/80 leading-snug text-center mb-3 px-2 italic">
             &ldquo;{dialogue}&rdquo;
           </p>
 
-          {/* Branding */}
-          <div className="flex items-center justify-center gap-1.5">
-            <span
-              className="font-display text-xs font-bold"
-              style={{ color: grad.accent }}
-            >
-              Yoga Age Quiz
+          {/* CTA */}
+          <div className="flex items-center justify-center">
+            <span className="font-display text-xs font-bold text-stone-700/80 tracking-wide">
+              Find out your Yoga Age →
             </span>
           </div>
         </div>

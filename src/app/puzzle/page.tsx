@@ -1,232 +1,104 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUZZLE DATA
-//
-// For each pose, drop these files into /public/puzzle/{pose-slug}/
-//   puzzle.png  → the full pose illustration (without the missing piece)
-//   a.png       → option A image (the bottom-right piece)
-//   b.png       → option B
-//   c.png       → option C
-//   d.png       → option D
-//
-// Mark which option is correct with  correct: true
-// ─────────────────────────────────────────────────────────────────────────────
-type Option = { image: string; correct: boolean };
-type PuzzleRound = { name: string; puzzle: string; options: Option[] };
-
-const PUZZLES: PuzzleRound[] = [
-  {
-    name: "Warrior II",
-    puzzle: "/puzzle/warrior-ii/puzzle.png",
-    options: [
-      { image: "/puzzle/warrior-ii/a.png", correct: true },
-      { image: "/puzzle/warrior-ii/b.png", correct: false },
-      { image: "/puzzle/warrior-ii/c.png", correct: false },
-      { image: "/puzzle/warrior-ii/d.png", correct: false },
-    ],
-  },
-  {
-    name: "Tree Pose",
-    puzzle: "/puzzle/tree-pose/puzzle.png",
-    options: [
-      { image: "/puzzle/tree-pose/a.png", correct: false },
-      { image: "/puzzle/tree-pose/b.png", correct: true },   // ← correct
-      { image: "/puzzle/tree-pose/c.png", correct: false },
-      { image: "/puzzle/tree-pose/d.png", correct: false },
-    ],
-  },
-  {
-    name: "Child's Pose",
-    puzzle: "/puzzle/childs-pose/puzzle.png",
-    options: [
-      { image: "/puzzle/childs-pose/a.png", correct: false },
-      { image: "/puzzle/childs-pose/b.png", correct: false },
-      { image: "/puzzle/childs-pose/c.png", correct: false },
-      { image: "/puzzle/childs-pose/d.png", correct: true },
-    ],
-  },
-  {
-    name: "Downward Dog",
-    puzzle: "/puzzle/downward-dog/puzzle.png",
-    options: [
-      { image: "/puzzle/downward-dog/a.png", correct: true },
-      { image: "/puzzle/downward-dog/b.png", correct: false },
-      { image: "/puzzle/downward-dog/c.png", correct: false },
-      { image: "/puzzle/downward-dog/d.png", correct: false },
-    ],
-  },
-  {
-    name: "Cobra",
-    puzzle: "/puzzle/cobra/puzzle.png",
-    options: [
-      { image: "/puzzle/cobra/a.png", correct: false },
-      { image: "/puzzle/cobra/b.png", correct: true },
-      { image: "/puzzle/cobra/c.png", correct: false },
-      { image: "/puzzle/cobra/d.png", correct: false },
-    ],
-  },
+// ─── Board items ──────────────────────────────────────────────────────────
+const ITEMS = [
+  { emoji: "🥗", name: "Salad", points: 10, healthy: true },
+  { emoji: "🍕", name: "Pizza", points: -5, healthy: false },
+  { emoji: "🍎", name: "Apple", points: 10, healthy: true },
+  { emoji: "🍔", name: "Burger", points: -5, healthy: false },
+  { emoji: "🥑", name: "Avocado", points: 10, healthy: true },
+  { emoji: "🍟", name: "Fries", points: -5, healthy: false },
+  { emoji: "🥕", name: "Carrot", points: 10, healthy: true },
+  { emoji: "🍩", name: "Donut", points: -5, healthy: false },
+  { emoji: "🫐", name: "Berries", points: 10, healthy: true },
+  { emoji: "🥤", name: "Soda", points: -5, healthy: false },
 ];
 
-const TOTAL_ROUNDS = 3;
-const OPTION_LABELS = ["A", "B", "C", "D"];
+const TOTAL_THROWS = 8;
+const SLICE = 360 / ITEMS.length;
+const BOARD_R = 120;
+const SPEED = 1.8;
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+// ─── Main page ────────────────────────────────────────────────────────────
+export default function DartPage() {
+  const boardRef = useRef<HTMLDivElement>(null);
+  const angleRef = useRef(0);
+  const rafRef = useRef<number>(0);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUZZLE BOARD
-// Shows the full pose image with a dashed MISSING overlay on the bottom-right.
-// When solved, the correct option image flies into the slot.
-// ─────────────────────────────────────────────────────────────────────────────
-function PuzzleBoard({
-  puzzle,
-  correctImage,
-  solved,
-}: {
-  puzzle: string;
-  correctImage: string;
-  solved: boolean;
-}) {
-  return (
-    <div
-      className="relative w-full rounded-2xl overflow-hidden"
-      style={{
-        background: "white",
-        boxShadow: "0 2px 20px rgba(0,0,0,0.10)",
-        aspectRatio: "1 / 1",
-      }}
-    >
-      {/* Full pose image — already has the MISSING box drawn in */}
-      <Image
-        src={puzzle}
-        alt="Pose puzzle"
-        fill
-        className="object-cover"
-        priority
-      />
+  const [score, setScore] = useState(0);
+  const [throwsLeft, setThrowsLeft] = useState(TOTAL_THROWS);
+  const [throwing, setThrowing] = useState(false);
+  const [dartFlying, setDartFlying] = useState(false);
+  const [lastHit, setLastHit] = useState<{
+    item: (typeof ITEMS)[number] | null;
+    miss: boolean;
+  } | null>(null);
+  const [phase, setPhase] = useState<"playing" | "lead_capture" | "score">("playing");
+  const [hitIdx, setHitIdx] = useState<number | null>(null);
 
-      {/* When solved: overlay the correct piece over the MISSING area (bottom-right 50%×50%) */}
-      <AnimatePresence>
-        {solved && (
-          <motion.div
-            key="filled"
-            initial={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 22 }}
-            className="absolute"
-            style={{ right: 0, bottom: 0, width: "50%", height: "50%", position: "absolute" }}
-          >
-            <Image
-              src={correctImage}
-              alt="Correct piece"
-              fill
-              className="object-cover rounded-br-2xl"
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// OPTION TILE
-// ─────────────────────────────────────────────────────────────────────────────
-function OptionTile({
-  image,
-  label,
-  shaking,
-  disabled,
-  onClick,
-}: {
-  image: string;
-  label: string;
-  shaking: boolean;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <motion.div
-      animate={shaking ? { x: [-7, 7, -5, 5, -3, 3, 0] } : {}}
-      transition={{ duration: 0.45 }}
-      onClick={disabled ? undefined : onClick}
-      style={{ cursor: disabled ? "default" : "pointer" }}
-    >
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{
-          background: "white",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
-          border: shaking ? "2px solid #E05A2A" : "2px solid #F0EBE3",
-          transition: "border-color 0.2s",
-          aspectRatio: "1 / 1",
-          position: "relative",
-        }}
-      >
-        <Image src={image} alt={`Option ${label}`} fill className="object-cover" />
-      </div>
-      <p
-        className="text-center font-semibold mt-2"
-        style={{ fontSize: 15, color: "#8a8580", letterSpacing: "0.04em" }}
-      >
-        {label}
-      </p>
-    </motion.div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN PAGE
-// ─────────────────────────────────────────────────────────────────────────────
-export default function PuzzlePage() {
-  const rounds = useMemo(
-    () => shuffle(PUZZLES).slice(0, Math.min(TOTAL_ROUNDS, PUZZLES.length)),
-    []
-  );
-
-  const [currentRound, setCurrentRound] = useState(0);
-  const [phase, setPhase] = useState<"puzzle" | "lead_capture" | "done">("puzzle");
-  const [shakeIdx, setShakeIdx] = useState<number | null>(null);
-  const [slotFilled, setSlotFilled] = useState(false);
-
+  // Lead capture
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
-  const round = rounds[currentRound];
-  const correctImage = round.options.find((o) => o.correct)!.image;
+  // Spin the board
+  useEffect(() => {
+    if (phase !== "playing") return;
+    const tick = () => {
+      angleRef.current = (angleRef.current + SPEED) % 360;
+      if (boardRef.current) {
+        boardRef.current.style.transform = `rotate(${angleRef.current}deg)`;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [phase]);
 
-  function handleOption(idx: number) {
-    if (slotFilled) return;
-    if (round.options[idx].correct) {
-      setSlotFilled(true);
-      setTimeout(() => {
-        if (currentRound + 1 >= rounds.length) {
-          setPhase("lead_capture");
-        } else {
-          setTimeout(() => {
-            setSlotFilled(false);
-            setCurrentRound((r) => r + 1);
-          }, 500);
-        }
-      }, 900);
-    } else {
-      setShakeIdx(idx);
-      setTimeout(() => setShakeIdx(null), 550);
-    }
-  }
+  const throwDart = useCallback(() => {
+    if (throwing || throwsLeft <= 0 || phase !== "playing") return;
+    setThrowing(true);
+    setLastHit(null);
+    setHitIdx(null);
+    setDartFlying(true);
+
+    const R = angleRef.current;
+    const hitAngle = ((360 - R) % 360 + 360) % 360;
+    const nearest = Math.round(hitAngle / SLICE) % ITEMS.length;
+    const nearestAngle = nearest * SLICE;
+    const diff = Math.min(
+      Math.abs(hitAngle - nearestAngle),
+      360 - Math.abs(hitAngle - nearestAngle)
+    );
+    const isMiss = diff > SLICE * 0.38;
+
+    // Dart flight takes 400ms, then show result
+    setTimeout(() => {
+      setDartFlying(false);
+
+      if (isMiss) {
+        setLastHit({ item: null, miss: true });
+      } else {
+        const food = ITEMS[nearest];
+        setScore((s) => s + food.points);
+        setLastHit({ item: food, miss: false });
+        setHitIdx(nearest);
+      }
+
+      const remaining = throwsLeft - 1;
+      setThrowsLeft(remaining);
+      setThrowing(false);
+
+      if (remaining <= 0) {
+        setTimeout(() => setPhase("lead_capture"), 1800);
+      }
+
+      setTimeout(() => setHitIdx(null), 600);
+    }, 400);
+  }, [throwing, throwsLeft, phase]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -235,156 +107,333 @@ export default function PuzzlePage() {
     await fetch("/api/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, phone, source: "puzzle" }),
+      body: JSON.stringify({ name, phone, score, source: "dart" }),
     });
     setSubmitting(false);
-    setSubmitted(true);
-    setTimeout(() => setPhase("done"), 1200);
+    setPhase("score");
   }
 
-  // ── Done ──
-  if (phase === "done") {
+  // ── Score reveal (shown AFTER data collection) ──
+  if (phase === "score") {
+    const msg =
+      score >= 50
+        ? { emoji: "🏆", title: "Amazing!", sub: "You really know your healthy foods!" }
+        : score >= 20
+        ? { emoji: "💪", title: "Well played!", sub: "You've got good instincts." }
+        : score >= 0
+        ? { emoji: "👍", title: "Not bad!", sub: "Keep practicing those healthy picks." }
+        : { emoji: "😅", title: "Oops!", sub: "Watch out for those junk foods next time!" };
+
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: "#FAF7F2" }}
-      >
-        <div className="text-center px-6">
-          <div className="text-6xl mb-5">🎉</div>
-          <h2
-            className="text-2xl font-bold mb-2"
-            style={{ fontFamily: "var(--font-display, 'Fraunces', Georgia, serif)" }}
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#FAF7F2" }}>
+        <motion.div
+          className="text-center px-6"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 18 }}
+        >
+          <div className="text-6xl mb-4">{msg.emoji}</div>
+          <h2 className="text-2xl font-bold mb-3 font-display">{msg.title}</h2>
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.3, type: "spring", stiffness: 250 }}
+            className="inline-block rounded-2xl px-8 py-4 mb-4"
+            style={{ background: "white", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}
           >
-            You&apos;re a yoga pro!
-          </h2>
-          <p className="text-sm" style={{ color: "#8a8580" }}>
-            Thanks for playing. We&apos;ll be in touch soon!
+            <p className="text-sm" style={{ color: "#8a8580" }}>Your Score</p>
+            <p
+              className="text-4xl font-bold"
+              style={{ color: score >= 0 ? "#7D9B76" : "#C4622D" }}
+            >
+              {score}
+            </p>
+          </motion.div>
+          <p className="text-sm" style={{ color: "#8a8580" }}>{msg.sub}</p>
+          <p className="text-xs mt-4" style={{ color: "#B8B0A8" }}>
+            Thanks for playing, {name}! We&apos;ll be in touch.
           </p>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
-  // ── Lead capture ──
+  // ── Lead capture (NO score shown — score is the reward for submitting) ──
   if (phase === "lead_capture") {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center px-6"
-        style={{ background: "#FAF7F2" }}
-      >
-        <div className="w-full max-w-xs">
+      <div className="min-h-screen flex items-center justify-center px-6" style={{ background: "#FAF7F2" }}>
+        <motion.div
+          className="w-full max-w-xs"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
           <div className="text-center mb-6">
-            <div className="text-5xl mb-3">🧘</div>
-            <h2
-              className="text-2xl font-bold mb-1"
-              style={{ fontFamily: "var(--font-display, 'Fraunces', Georgia, serif)" }}
+            <div className="text-5xl mb-3">🎯</div>
+            <h2 className="text-2xl font-bold font-display mb-1">Game Over!</h2>
+            <div
+              className="inline-block rounded-xl px-5 py-2 mt-2 mb-2"
+              style={{ background: "#F0EBE2" }}
             >
-              Nicely done!
-            </h2>
-            <p className="text-sm mt-1" style={{ color: "#8a8580" }}>
-              You completed all {rounds.length} puzzles. Enter your details to claim your reward.
+              <p className="text-sm font-medium" style={{ color: "#8a8580" }}>
+                🔒 Your score is ready
+              </p>
+            </div>
+            <p className="text-sm mt-2" style={{ color: "#8a8580" }}>
+              Enter your details to reveal your score!
             </p>
           </div>
-          {!submitted ? (
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <input
-                type="text"
-                placeholder="Your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
-                style={{ border: "1.5px solid #E0D8D0", background: "white" }}
-              />
-              <input
-                type="tel"
-                placeholder="Phone number"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
-                style={{ border: "1.5px solid #E0D8D0", background: "white" }}
-              />
-              <button
-                type="submit"
-                disabled={submitting || !name.trim() || !phone.trim()}
-                className="w-full py-3 rounded-2xl text-white font-semibold text-sm disabled:opacity-50"
-                style={{ background: "#C4622D" }}
-              >
-                {submitting ? "Submitting..." : "Claim My Reward →"}
-              </button>
-            </form>
-          ) : (
-            <div className="text-center py-8">
-              <div className="text-3xl mb-3" style={{ color: "#7D9B76" }}>✓</div>
-              <p className="font-medium">See you soon!</p>
-            </div>
-          )}
-        </div>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input
+              type="text"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
+              style={{ border: "1.5px solid #E0D8D0", background: "white" }}
+            />
+            <input
+              type="tel"
+              placeholder="Phone number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
+              style={{ border: "1.5px solid #E0D8D0", background: "white" }}
+            />
+            <button
+              type="submit"
+              disabled={submitting || !name.trim() || !phone.trim()}
+              className="w-full py-3 rounded-2xl text-white font-semibold text-sm disabled:opacity-50"
+              style={{ background: "#C4622D" }}
+            >
+              {submitting ? "Revealing..." : "Reveal My Score →"}
+            </button>
+          </form>
+        </motion.div>
       </div>
     );
   }
 
-  // ── Puzzle ──
+  // ── Playing ──
   return (
     <div className="min-h-screen flex flex-col items-center" style={{ background: "#FAF7F2" }}>
-      <div className="w-full max-w-sm px-5 pt-8 pb-10">
+      <div className="w-full max-w-sm px-5 pt-6 pb-8 flex flex-col items-center">
 
-        {/* Progress dots */}
-        <div className="flex justify-center items-center gap-2 mb-7">
-          {rounds.map((_, i) => (
-            <motion.div
-              key={i}
-              animate={{ width: i === currentRound ? 28 : 8 }}
-              transition={{ duration: 0.3 }}
-              style={{
-                height: 8,
-                borderRadius: 4,
-                background:
-                  i < currentRound ? "#C4622D" : i === currentRound ? "#C4622D" : "#D8D2CA",
-              }}
-            />
-          ))}
+        {/* Header: throws remaining */}
+        <div className="w-full flex justify-between items-center mb-4">
+          <p className="text-sm font-medium" style={{ color: "#8a8580" }}>
+            Throws left: <span className="font-bold" style={{ color: "#C4622D" }}>{throwsLeft}</span>
+          </p>
+          <div className="flex items-center gap-1.5">
+            {Array.from({ length: TOTAL_THROWS }).map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: i < TOTAL_THROWS - throwsLeft ? "#C4622D" : "#E0D8D0",
+                  transition: "background 0.3s",
+                }}
+              />
+            ))}
+          </div>
         </div>
 
-        {/* Title */}
+        {/* Title + instructions */}
         <h1
-          className="text-center font-bold mb-5"
+          className="text-center font-bold mb-1"
           style={{
-            fontSize: 20,
+            fontSize: 22,
             fontFamily: "var(--font-display, 'Fraunces', Georgia, serif)",
-            color: "#1a1a1a",
           }}
         >
-          {currentRound + 1}. Complete the {round.name}
+          Spin &amp; Hit!
         </h1>
-
-        {/* Puzzle board */}
-        <PuzzleBoard
-          puzzle={round.puzzle}
-          correctImage={correctImage}
-          solved={slotFilled}
-        />
-
-        {/* Question text */}
-        <p
-          className="text-center font-medium mt-4 mb-5"
-          style={{ fontSize: 14, color: "#5A5550" }}
-        >
-          Which piece completes the puzzle?
+        <p className="text-sm text-center mb-2" style={{ color: "#5A5550" }}>
+          The board is spinning &mdash; tap to hit what&apos;s at the arrow
         </p>
-
-        {/* Options 2×2 */}
-        <div className="grid grid-cols-2 gap-3">
-          {round.options.map((opt, i) => (
-            <OptionTile
-              key={`${currentRound}-${i}`}
-              image={opt.image}
-              label={OPTION_LABELS[i]}
-              shaking={shakeIdx === i}
-              disabled={slotFilled}
-              onClick={() => handleOption(i)}
-            />
-          ))}
+        <div
+          className="flex gap-4 text-xs font-medium mb-6 px-4 py-2 rounded-xl"
+          style={{ background: "#F0EBE2", color: "#6A6560" }}
+        >
+          <span>🥗 Healthy = <b style={{ color: "#7D9B76" }}>+10</b></span>
+          <span>🍔 Junk = <b style={{ color: "#C4622D" }}>−5</b></span>
+          <span>Miss = <b>0</b></span>
         </div>
+
+        {/* Board area */}
+        <div className="relative" style={{ width: 290, height: 290 }}>
+
+          {/* Pointer arrow at top center */}
+          <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: -6 }}>
+            <svg width="28" height="36" viewBox="0 0 28 36">
+              <path
+                d="M14 36 L4 12 Q0 4 6 1 L14 0 L22 1 Q28 4 24 12 Z"
+                fill="#C4622D"
+                stroke="#A14E22"
+                strokeWidth="1"
+              />
+              <circle cx="14" cy="10" r="3" fill="#A14E22" />
+              <path
+                d="M14 36 L4 12 Q0 4 6 1 L14 0 L14 36 Z"
+                fill="#B3551F"
+                opacity="0.3"
+              />
+            </svg>
+          </div>
+
+          {/* Board background */}
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: "conic-gradient(from 0deg, #FAF7F2 0deg, #F0EBE2 18deg, #FAF7F2 36deg, #F0EBE2 54deg, #FAF7F2 72deg, #F0EBE2 90deg, #FAF7F2 108deg, #F0EBE2 126deg, #FAF7F2 144deg, #F0EBE2 162deg, #FAF7F2 180deg, #F0EBE2 198deg, #FAF7F2 216deg, #F0EBE2 234deg, #FAF7F2 252deg, #F0EBE2 270deg, #FAF7F2 288deg, #F0EBE2 306deg, #FAF7F2 324deg, #F0EBE2 342deg)",
+              border: "5px solid #D8D0C4",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.14), inset 0 0 40px rgba(0,0,0,0.04)",
+            }}
+          />
+
+          {/* Inner rings */}
+          <div
+            className="absolute rounded-full"
+            style={{
+              top: "22%", left: "22%", width: "56%", height: "56%",
+              border: "2px solid #DDD6CC",
+            }}
+          />
+          <div
+            className="absolute rounded-full"
+            style={{
+              top: "40%", left: "40%", width: "20%", height: "20%",
+              background: "#EDE6DC",
+              border: "2px solid #D8D0C4",
+            }}
+          />
+          <div
+            className="absolute rounded-full flex items-center justify-center"
+            style={{
+              top: "44%", left: "44%", width: "12%", height: "12%",
+              background: "#C4622D",
+            }}
+          >
+            <div
+              className="rounded-full"
+              style={{ width: "50%", height: "50%", background: "#A14E22" }}
+            />
+          </div>
+
+          {/* Spinning layer with food items */}
+          <div
+            ref={boardRef}
+            className="absolute inset-0"
+            style={{ willChange: "transform" }}
+          >
+            {ITEMS.map((item, i) => {
+              const angle = i * SLICE - 90;
+              const rad = (angle * Math.PI) / 180;
+              const cx = 145 + Math.cos(rad) * BOARD_R;
+              const cy = 145 + Math.sin(rad) * BOARD_R;
+              const isHit = hitIdx === i;
+
+              return (
+                <div
+                  key={i}
+                  className="absolute flex items-center justify-center"
+                  style={{
+                    width: 50,
+                    height: 50,
+                    left: cx - 25,
+                    top: cy - 25,
+                    borderRadius: "50%",
+                    background: isHit
+                      ? item.healthy ? "#C8E6C9" : "#FFCDD2"
+                      : item.healthy ? "#E8F5E9" : "#FFF3F0",
+                    border: `3px solid ${
+                      isHit
+                        ? item.healthy ? "#4CAF50" : "#E53935"
+                        : item.healthy ? "#A5D6A7" : "#EF9A9A"
+                    }`,
+                    fontSize: 24,
+                    transition: "all 0.2s",
+                    boxShadow: isHit
+                      ? `0 0 16px ${item.healthy ? "rgba(76,175,80,0.6)" : "rgba(229,57,53,0.6)"}`
+                      : "0 2px 8px rgba(0,0,0,0.1)",
+                  }}
+                >
+                  {item.emoji}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Dart flying animation */}
+          <AnimatePresence>
+            {dartFlying && (
+              <motion.div
+                className="absolute left-1/2 z-30"
+                style={{ marginLeft: -14 }}
+                initial={{ bottom: -60, opacity: 1, scale: 1 }}
+                animate={{ bottom: 120, opacity: 1, scale: 0.7 }}
+                exit={{ opacity: 0, scale: 0.3 }}
+                transition={{ duration: 0.35, ease: "easeIn" }}
+              >
+                <svg width="28" height="48" viewBox="0 0 28 48">
+                  <path d="M14 0 L8 16 L2 14 L14 48 L26 14 L20 16 Z" fill="#C4622D" />
+                  <path d="M14 0 L8 16 L2 14 L14 48 L14 0 Z" fill="#A14E22" opacity="0.4" />
+                  <circle cx="14" cy="20" r="3" fill="#E8C4A0" />
+                </svg>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Last hit feedback */}
+        <div className="h-12 flex items-center justify-center mt-4">
+          <AnimatePresence mode="wait">
+            {lastHit && (
+              <motion.div
+                key={`${throwsLeft}-${lastHit.miss}`}
+                initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-center"
+              >
+                {lastHit.miss ? (
+                  <span
+                    className="inline-block text-sm font-semibold px-4 py-2 rounded-xl"
+                    style={{ background: "#F0EBE2", color: "#8a8580" }}
+                  >
+                    Missed! 0 points
+                  </span>
+                ) : lastHit.item ? (
+                  <span
+                    className="inline-block text-sm font-bold px-4 py-2 rounded-xl"
+                    style={{
+                      background: lastHit.item.healthy ? "#E8F5E9" : "#FFF3F0",
+                      color: lastHit.item.healthy ? "#2E7D32" : "#C62828",
+                    }}
+                  >
+                    {lastHit.item.emoji} {lastHit.item.name}!{" "}
+                    {lastHit.item.points > 0 ? `+${lastHit.item.points}` : lastHit.item.points}
+                  </span>
+                ) : null}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Tap button */}
+        <motion.button
+          whileTap={{ scale: 0.92 }}
+          onClick={throwDart}
+          disabled={throwing || throwsLeft <= 0}
+          className="mt-2 w-full max-w-[260px] py-4 rounded-2xl text-white font-bold text-base disabled:opacity-40"
+          style={{
+            background: "linear-gradient(135deg, #C4622D 0%, #A14E22 100%)",
+            boxShadow: "0 4px 16px rgba(196,98,45,0.35)",
+          }}
+        >
+          {throwing ? "..." : `TAP TO HIT! (${throwsLeft} left)`}
+        </motion.button>
       </div>
     </div>
   );

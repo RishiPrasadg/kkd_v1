@@ -6,8 +6,6 @@ import type { Result as ResultType } from "@/lib/scoring";
 import BodySilhouette from "./BodySilhouette";
 import ShareCard from "./ShareCard";
 import ShareButtons from "./ShareButtons";
-import { ResultMascot } from "./illustrations/Character";
-
 // Per-result dramatic theming
 const RESULT_THEMES: Record<
   string,
@@ -115,7 +113,7 @@ export default function Result({
           transition={{ delay: 0.2 }}
           className="text-center text-base text-muted mb-6"
         >
-          {userName}, aapka result aa gaya
+          {userName}, your result is in
         </motion.p>
 
         {/* Label */}
@@ -125,7 +123,7 @@ export default function Result({
           transition={{ delay: 0.4 }}
           className="text-center text-xs uppercase tracking-[0.25em] text-muted mb-3"
         >
-          Aapka Yoga Age Hai...
+          Your Yoga Age is...
         </motion.p>
 
         {/* Giant Yoga Age number with glow */}
@@ -163,26 +161,23 @@ export default function Result({
           Real age: {realAge} &rarr; Yoga age: {result.yogaAge}
         </motion.p>
 
-        {/* Mascot + Personality */}
+        {/* Personality */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 2.0 }}
-          className="flex flex-col items-center mb-8"
+          className="text-center mb-8"
         >
-          <ResultMascot resultKey={result.resultKey} />
-          <div className="text-center mt-4">
-            <p className="text-3xl mb-2">{result.emoji}</p>
-            <p
-              className="font-display text-2xl"
-              style={{ color: theme.accent }}
-            >
-              {result.personality}
-            </p>
-            <p className="mt-3 text-sm text-muted leading-relaxed max-w-xs mx-auto">
-              {result.tagline}
-            </p>
-          </div>
+          <p className="text-3xl mb-2">{result.emoji}</p>
+          <p
+            className="font-display text-2xl"
+            style={{ color: theme.accent }}
+          >
+            {result.personality}
+          </p>
+          <p className="mt-3 text-sm text-muted leading-relaxed max-w-xs mx-auto">
+            {result.tagline}
+          </p>
         </motion.div>
 
         {/* AI Insight card */}

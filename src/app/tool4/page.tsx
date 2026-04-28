@@ -1,138 +1,459 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Pinyon_Script } from "next/font/google";
 
-type Step = "landing" | "pick" | "result";
+const pinyonScript = Pinyon_Script({ subsets: ["latin"], weight: "400" });
 
-const CARDS = [
-  {
-    emoji: "🌅",
-    title: "Morning Reset",
-    challenge: "Can you sit upright — no support — for 60 seconds right now?",
-    yes: { label: "Yes, easy!", insight: "Your core is doing its job. Keep it strong with 5 mins of yoga every morning.", color: "#E8EFE6", accent: "#5B8F8F" },
-    no: { label: "Not quite", insight: "A weak core makes everything harder — your back, posture, energy. Start with 3 minutes of Plank today.", color: "#F0E4D4", accent: "#B8705A" },
-  },
-  {
-    emoji: "🌬️",
-    title: "Breath Check",
-    challenge: "Take a deep breath right now. Did your shoulders rise?",
-    yes: { label: "Yes they did", insight: "Shoulder breathing = shallow breathing. Your body is in low-key stress mode. Try belly breathing for 2 minutes.", color: "#F2E8DC", accent: "#C4A24E" },
-    no: { label: "Nope, belly moved", insight: "You breathe correctly — that's rarer than you think. Your nervous system thanks you.", color: "#E8EFE6", accent: "#5B8F8F" },
-  },
-  {
-    emoji: "🪑",
-    title: "Desk Test",
-    challenge: "Right now — are you sitting with your back straight?",
-    yes: { label: "Yes I am!", insight: "Great posture is a habit, not a one-time thing. You're already ahead of 80% of people.", color: "#E8F0E8", accent: "#5B8A5B" },
-    no: { label: "I just fixed it 😅", insight: "Your spine was waiting for this. Set a timer — every 30 mins, check in with your posture.", color: "#EDE3D6", accent: "#8B6B5E" },
-  },
-  {
-    emoji: "🦵",
-    title: "Hip Truth",
-    challenge: "Try sitting cross-legged on the floor right now.",
-    yes: { label: "Comfortable!", insight: "Open hips are a superpower. They protect your knees and lower back. Keep doing what you're doing.", color: "#F5E6DA", accent: "#C4622D" },
-    no: { label: "Hips said no", insight: "Tight hips are the #1 hidden cause of back pain. Just 5 mins of hip-opening yoga a day changes everything.", color: "#F0E4D4", accent: "#B8705A" },
-  },
-  {
-    emoji: "😴",
-    title: "Rest Reveal",
-    challenge: "Do you wake up more tired than when you went to bed?",
-    yes: { label: "Every. Single. Day.", insight: "That groggy feeling isn't just sleep — it's your body asking for movement. 10 mins of gentle yoga before bed changes your sleep quality.", color: "#EAE2D8", accent: "#7D9B76" },
-    no: { label: "I wake up fresh", insight: "Good sleep recovery means your body is in balance. Protect it — don't let stress creep in.", color: "#E8EFE6", accent: "#5B8F8F" },
-  },
-  {
-    emoji: "🔄",
-    title: "Spine Check",
-    challenge: "Turn your head slowly left, then right. Equal range both sides?",
-    yes: { label: "Smooth both ways", insight: "Balanced neck mobility means low tension. Most people have one stiff side. You're doing great.", color: "#E8EFE6", accent: "#5B8F8F" },
-    no: { label: "One side is tighter", insight: "Neck imbalance usually comes from how you sleep or hold your phone. A simple neck stretch every day fixes this in 2 weeks.", color: "#F2E8DC", accent: "#C4A24E" },
-  },
+type Step = "landing" | "step1" | "step2" | "step3" | "loading" | "step4";
+type CardStyleId = 1 | 2 | 3 | 4;
+type FlowerChoice = "tulips" | "lilies" | "jasmine" | "peonies" | "sunflowers";
+
+const MUM_NAMES = ["Maa", "Mummy", "Amma", "Mom", "Aai", "Other"] as const;
+
+const FLOWERS: { id: FlowerChoice; emoji: string; label: string }[] = [
+  { id: "tulips",     emoji: "💜", label: "Tulips"     },
+  { id: "lilies",     emoji: "🌸", label: "Lilies"     },
+  { id: "jasmine",    emoji: "🤍", label: "Jasmine"    },
+  { id: "peonies",    emoji: "🌺", label: "Peonies"    },
+  { id: "sunflowers", emoji: "🌻", label: "Sunflowers" },
 ];
 
-export default function FlipCardPage() {
+// Maps style ID to public image path
+const CARD_BG: Record<CardStyleId, string> = {
+  1: "/card-bg-1.jpg",
+  2: "/card-bg-2.jpg",
+  3: "/card-bg-3.jpg",
+  4: "/card-bg-4.jpg",
+};
+
+// Padding to stay inside each frame's border area.
+// These are set generously — each frame image has a different border thickness.
+const CARD_PADDING: Record<CardStyleId, { x: number; y: number }> = {
+  1: { x: 46, y: 42 }, // simple leaf/flower frame  — thin border
+  2: { x: 58, y: 54 }, // green stitched frame       — medium border
+  3: { x: 72, y: 68 }, // rich watercolour frame     — very thick border
+  4: { x: 64, y: 58 }, // pink ribbon frame          — medium-thick border
+};
+
+const STYLE_LABELS: Record<CardStyleId, string> = {
+  1: "Garden Frame",
+  2: "Hand-Painted",
+  3: "Watercolour",
+  4: "Pink Ribbon",
+};
+const STYLE_DESCS: Record<CardStyleId, string> = {
+  1: "Soft & botanical",
+  2: "Illustrated charm",
+  3: "Lush & romantic",
+  4: "Sweet & delicate",
+};
+
+// ─── Style Thumbnail ─────────────────────────────────────────────────────────
+
+function StyleThumbnail({
+  style,
+  selected,
+  onClick,
+}: {
+  style: CardStyleId;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button onClick={onClick} className="flex flex-col items-center gap-2 focus:outline-none">
+      <div
+        className="relative overflow-hidden rounded-xl transition-all duration-200"
+        style={{
+          width: 72,
+          height: 108,
+          boxShadow: selected
+            ? "0 0 0 3px #E8A0A0, 0 4px 16px rgba(201,116,138,0.3)"
+            : "0 2px 8px rgba(0,0,0,0.09)",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={CARD_BG[style]}
+          alt={STYLE_LABELS[style]}
+          style={{ width: "100%", height: "100%", objectFit: "fill", display: "block" }}
+        />
+      </div>
+      <div className="text-center">
+        <p className="text-[11px] font-medium text-[#2a1a1a] leading-tight">{STYLE_LABELS[style]}</p>
+        <p className="text-[10px] text-[#8a8580]">{STYLE_DESCS[style]}</p>
+      </div>
+    </button>
+  );
+}
+
+// ─── Flower Bouquet ──────────────────────────────────────────────────────────
+
+const RIBBON_COLORS: Record<FlowerChoice, string> = {
+  tulips:     "#9B59B6",
+  lilies:     "#E8A0A0",
+  jasmine:    "#A8D5A2",
+  peonies:    "#E0607E",
+  sunflowers: "#F5C060",
+};
+
+// All 5 flowers always shown in the bouquet.
+// Each entry: { src, left, top, rotation, headSize, stemCx, stemCy }
+// stemCx/stemCy = approximate base of stem in SVG coords
+const BOUQUET_LAYOUT = [
+  { src: "/f1.png", l: 8,   t: 0,  r: -18, s: 70, cx: 43,  cy: 70  }, // tulip   — back-left
+  { src: "/f3.png", l: 80,  t: -4, r: 0,   s: 73, cx: 116, cy: 69  }, // jasmine — back-center
+  { src: "/f4.png", l: 152, t: 0,  r: 18,  s: 70, cx: 187, cy: 70  }, // peony   — back-right
+  { src: "/f2.png", l: 25,  t: 58, r: -10, s: 80, cx: 65,  cy: 138 }, // lily    — front-left
+  { src: "/f5.png", l: 125, t: 58, r: 10,  s: 80, cx: 165, cy: 138 }, // sunflower — front-right
+];
+const CONV = { x: 115, y: 200 }; // stem convergence point
+
+function FlowerBouquet({ flower }: { flower: FlowerChoice }) {
+  const ribbon = RIBBON_COLORS[flower];
+
+  return (
+    <div style={{ position: "relative", width: "100%" }}>
+      {/* Watercolor bouquet — mix-blend-mode:multiply removes the white background */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/bouquet.png"
+        alt="flower bouquet"
+        style={{
+          width: "100%",
+          height: "auto",
+          objectFit: "contain",
+          mixBlendMode: "multiply",
+          display: "block",
+        }}
+      />
+      {/* Small ribbon accent at the stem tie, colour matches selection */}
+      <svg
+        viewBox="0 0 220 30"
+        style={{ position: "absolute", bottom: "8%", left: 0, width: "100%", height: "12%", overflow: "visible" }}
+      >
+        <path d={`M88,8 Q110,2 132,8 L130,22 Q110,28 90,22 Z`} fill={ribbon} opacity="0.55" />
+        <path d={`M88,8 Q110,14 132,8`} fill="none" stroke={ribbon} strokeWidth="1.2" opacity="0.6" />
+        <path d={`M92,21 Q80,32 75,28 Q81,19 93,22`} fill={ribbon} opacity="0.65" />
+        <path d={`M128,21 Q140,32 145,28 Q139,19 127,22`} fill={ribbon} opacity="0.65" />
+        <circle cx="110" cy="22" r="4" fill={ribbon} opacity="0.85" />
+      </svg>
+    </div>
+  );
+}
+
+// ─── Step Dots ───────────────────────────────────────────────────────────────
+
+function StepDots({ current }: { current: 1 | 2 | 3 }) {
+  return (
+    <div className="flex gap-2 justify-center mb-8">
+      {([1, 2, 3] as const).map((n) => (
+        <div
+          key={n}
+          className="rounded-full transition-all duration-300"
+          style={{
+            width: n === current ? 20 : 8,
+            height: 8,
+            backgroundColor: n <= current ? "#E8A0A0" : "#E8E2DA",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Quill Loading ───────────────────────────────────────────────────────────
+
+function QuillAnimation() {
+  return (
+    <div className="flex flex-col items-center gap-6 py-20">
+      <motion.div
+        animate={{ rotate: [-5, 5, -5] }}
+        transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+        className="text-6xl select-none"
+      >
+        🪶
+      </motion.div>
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: 180 }}
+        transition={{ duration: 3.5, ease: "linear" }}
+        className="h-0.5 rounded-full"
+        style={{ backgroundColor: "#E8A0A0" }}
+      />
+      <p style={{ color: "#8a8580", fontSize: 15 }}>Writing something just for her...</p>
+    </div>
+  );
+}
+
+// ─── Final Card ──────────────────────────────────────────────────────────────
+
+function FinalCard({
+  cardStyle,
+  imageDataUrl,
+  flowerChoice,
+  mumName,
+  poem,
+  userName,
+}: {
+  cardStyle: CardStyleId;
+  imageDataUrl: string | null;
+  flowerChoice: FlowerChoice | null;
+  mumName: string;
+  poem: string;
+  userName: string;
+}) {
+  const { x: padX, y: padY } = CARD_PADDING[cardStyle];
+
+  return (
+    <div
+      id="mothers-card"
+      className="relative overflow-hidden rounded-2xl"
+      style={{
+        width: "min(320px, calc(100vw - 40px))",
+        aspectRatio: "2/3",
+        boxShadow: "0 8px 48px rgba(0,0,0,0.14)",
+      }}
+    >
+      {/* Card background image (frame) */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={CARD_BG[cardStyle]}
+        alt=""
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "fill",
+          display: "block",
+        }}
+      />
+
+      {/* Content sits on top of the image, padded to stay inside frame */}
+      <div
+        className="relative z-10 flex flex-col items-center h-full overflow-hidden"
+        style={{ padding: `${padY}px ${padX}px` }}
+      >
+        {/* Title */}
+        <p
+          className="text-center flex-shrink-0"
+          style={{
+            fontFamily: pinyonScript.style.fontFamily,
+            fontSize: 20,
+            color: "#C9748A",
+            letterSpacing: "0.02em",
+            marginBottom: 8,
+          }}
+        >
+          Happy Mother&apos;s Day
+        </p>
+
+        {/* Image or Bouquet — capped so it never pushes poem out */}
+        <div
+          className="flex-shrink-0 flex items-center justify-center overflow-hidden"
+          style={{ width: "100%", maxHeight: "40%", marginBottom: 6 }}
+        >
+          {imageDataUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageDataUrl}
+              alt="Her photo"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                borderRadius: 10,
+                filter: "saturate(0.8) contrast(0.9) brightness(1.1) sepia(0.15)",
+                boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+              }}
+            />
+          ) : flowerChoice ? (
+            <FlowerBouquet flower={flowerChoice} />
+          ) : null}
+        </div>
+
+        {/* Poem */}
+        <div className="flex-1 flex items-center justify-center px-1 overflow-hidden">
+          <p
+            className="text-center"
+            style={{
+              fontFamily: pinyonScript.style.fontFamily,
+              fontSize: 15,
+              color: "#2a1a1a",
+              whiteSpace: "pre-line",
+              lineHeight: 1.75,
+            }}
+          >
+            {poem}
+          </p>
+        </div>
+
+        {/* Signature */}
+        <div className="flex-shrink-0 mt-1 w-full flex justify-end">
+          <p
+            style={{
+              fontFamily: pinyonScript.style.fontFamily,
+              fontSize: 13,
+              color: "#C9748A",
+            }}
+          >
+            With love, {userName}
+          </p>
+        </div>
+
+        {/* Watermark */}
+        <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center gap-1">
+          <span style={{ fontSize: 9 }}>🦸‍♀️</span>
+          <span style={{ fontSize: 7, color: "#C9748A", fontWeight: 500, letterSpacing: "0.05em" }}>
+            SUPERMUM
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+
+const slide = {
+  initial: { opacity: 0, x: 40 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -40 },
+  transition: { duration: 0.28 },
+};
+
+export default function MothersDayCardPage() {
   const [step, setStep] = useState<Step>("landing");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [flipped, setFlipped] = useState<number | null>(null);
-  const [answered, setAnswered] = useState<"yes" | "no" | null>(null);
+  const [cardStyle, setCardStyle] = useState<CardStyleId>(1);
+  const [imageMode, setImageMode] = useState<"photo" | "flowers" | null>(null);
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [flowerChoice, setFlowerChoice] = useState<FlowerChoice | null>(null);
+  const [selectedMumTag, setSelectedMumTag] = useState<string>("Maa");
+  const [customMumName, setCustomMumName] = useState("");
+  const [trait, setTrait] = useState("");
+  const [poem, setPoem] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  // Pick 3 random cards each session
-  const [cards] = useState(() => {
-    const shuffled = [...CARDS].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 3);
-  });
+  const mumName = selectedMumTag === "Other" ? customMumName.trim() : selectedMumTag;
 
-  const activeCard = flipped !== null ? cards[flipped] : null;
-  const result = activeCard && answered ? activeCard[answered] : null;
-
-  function validate() {
+  function validateLanding() {
     const e: Record<string, string> = {};
     if (name.trim().length < 2) e.name = "Enter your name";
-    if (!/^\d{10}$/.test(phone.replace(/\s/g, "")))
-      e.phone = "Enter a valid 10-digit number";
+    if (!/^\d{10}$/.test(phone.replace(/\s/g, ""))) e.phone = "Enter a valid 10-digit number";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
   function handleStart(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
-    fetch("/api/submit", {
+    if (!validateLanding()) return;
+    setStep("step1");
+  }
+
+  function handleStyleSelect(style: CardStyleId) {
+    setCardStyle(style);
+    setTimeout(() => setStep("step2"), 180);
+  }
+
+  function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setImageDataUrl(ev.target?.result as string);
+      setImageMode("photo");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleFlowerSelect(flower: FlowerChoice) {
+    setFlowerChoice(flower);
+    setImageMode("flowers");
+  }
+
+  async function handleGenerate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!mumName || !trait.trim()) return;
+    setStep("loading");
+
+    // Save name + phone locally
+    fetch("/api/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), phone: phone.replace(/\s/g, ""), age: 0, yogaAge: 0, score: 0, resultType: "flipcard" }),
+      body: JSON.stringify({
+        name: name.trim(),
+        phone: phone.replace(/\s/g, ""),
+        source: "mothers-card",
+        gender: "",
+        age: "",
+      }),
     }).catch(() => {});
-    setStep("pick");
+
+    try {
+      const res = await fetch("/api/mothers-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mumName, trait: trait.trim() }),
+      });
+      const data = await res.json();
+      setPoem(
+        data.poem ||
+          `${mumName}, in your ${trait} I found my whole world,\nEvery morning I wake up carrying something of yours with me,\nThank you for making love feel like a place I can always come home to.`
+      );
+    } catch {
+      setPoem(
+        `${mumName}, in your ${trait} I found my whole world,\nEvery morning I wake up carrying something of yours with me,\nThank you for making love feel like a place I can always come home to.`
+      );
+    }
+    setStep("step4");
   }
 
-  function handleFlip(idx: number) {
-    if (flipped !== null) return;
-    setFlipped(idx);
+  function handleWhatsApp() {
+    const msg = encodeURIComponent(`Made this for you with love ❤️\n\n${poem}\n\n— ${name}`);
+    window.open(`https://wa.me/?text=${msg}`, "_blank");
   }
 
-  function handleAnswer(ans: "yes" | "no") {
-    setAnswered(ans);
-    setStep("result");
+  function handleDownload() {
+    window.print();
   }
 
   function handleReset() {
-    setFlipped(null);
-    setAnswered(null);
-    setStep("pick");
+    setStep("landing");
+    setCardStyle(1);
+    setImageMode(null);
+    setImageDataUrl(null);
+    setFlowerChoice(null);
+    setSelectedMumTag("Maa");
+    setCustomMumName("");
+    setTrait("");
+    setPoem("");
+    setErrors({});
   }
-
-  const bg =
-    step === "result" && result
-      ? result.color
-      : "#F5E6DA";
 
   return (
     <div
-      className="min-h-[100dvh] flex flex-col items-center justify-center px-5 py-16 bg-transition"
-      style={{ backgroundColor: bg }}
+      className="min-h-[100dvh] flex flex-col items-center justify-center px-5 py-16"
+      style={{ backgroundColor: "#FDF6E3" }}
     >
       <AnimatePresence mode="wait">
         {/* ── LANDING ── */}
         {step === "landing" && (
-          <motion.div
-            key="landing"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, x: -30 }}
-            className="w-full max-w-sm"
-          >
-            <div className="text-center mb-10">
-              <div className="text-5xl mb-4">🃏</div>
-              <h1 className="font-display text-4xl text-dark leading-tight mb-3">
-                Flip a Card
+          <motion.div key="landing" {...slide} className="w-full max-w-sm">
+            <div className="text-center mb-8">
+              <div className="text-5xl mb-4">🌸</div>
+              <h1 className="font-display text-4xl text-[#2a1a1a] leading-tight mb-3">
+                Make something beautiful for your Mum.
               </h1>
-              <p className="text-muted text-base">
-                Pick a card. Answer honestly. Find out what your body is telling you.
+              <p className="text-[#8a8580] text-base leading-relaxed">
+                Let&apos;s celebrate our superwoman every day.
               </p>
             </div>
-
             <form onSubmit={handleStart} className="space-y-4">
               <div>
                 <input
@@ -140,9 +461,9 @@ export default function FlipCardPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your name"
-                  className="w-full px-5 py-4 rounded-2xl border border-option-border bg-card text-dark text-[15px] placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-terracotta/30 focus:border-terracotta/40 transition"
+                  className="w-full px-5 py-4 rounded-2xl border border-[#E8E2DA] bg-white text-[#2a1a1a] text-[15px] placeholder:text-[#8a8580]/60 focus:outline-none focus:ring-2 focus:ring-[#E8A0A0]/40 transition"
                 />
-                {errors.name && <p className="mt-1.5 text-xs text-red-600 pl-1">{errors.name}</p>}
+                {errors.name && <p className="mt-1.5 text-xs text-red-500 pl-1">{errors.name}</p>}
               </div>
               <div>
                 <input
@@ -150,171 +471,260 @@ export default function FlipCardPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="10-digit phone number"
-                  className="w-full px-5 py-4 rounded-2xl border border-option-border bg-card text-dark text-[15px] placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-terracotta/30 focus:border-terracotta/40 transition"
+                  className="w-full px-5 py-4 rounded-2xl border border-[#E8E2DA] bg-white text-[#2a1a1a] text-[15px] placeholder:text-[#8a8580]/60 focus:outline-none focus:ring-2 focus:ring-[#E8A0A0]/40 transition"
                 />
-                {errors.phone && <p className="mt-1.5 text-xs text-red-600 pl-1">{errors.phone}</p>}
+                {errors.phone && <p className="mt-1.5 text-xs text-red-500 pl-1">{errors.phone}</p>}
               </div>
               <button
                 type="submit"
-                className="w-full py-4 rounded-2xl bg-dark text-white font-medium text-[15px] hover:bg-stone-800 active:scale-[0.98] transition-all cursor-pointer mt-2"
+                className="w-full py-4 rounded-2xl font-medium text-[15px] active:scale-[0.98] transition-all mt-2 cursor-pointer"
+                style={{ backgroundColor: "#E8A0A0", color: "#FDF6E3" }}
               >
-                Pick a Card →
+                Let&apos;s Begin →
               </button>
             </form>
-            <p className="text-center text-xs text-muted/60 mt-6">Your data stays private. Always.</p>
+            <p className="text-center text-xs text-[#8a8580]/60 mt-6">Your data stays private. Always.</p>
           </motion.div>
         )}
 
-        {/* ── PICK ── */}
-        {step === "pick" && (
-          <motion.div
-            key="pick"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="w-full max-w-md"
-          >
-            <div className="text-center mb-10">
-              <p className="text-muted text-sm mb-1">Hey {name} 👋</p>
-              <h2 className="font-display text-3xl text-dark">
-                Pick one card
-              </h2>
-              <p className="text-muted text-sm mt-2">Tap to flip it over</p>
+        {/* ── STEP 1: Card Style ── */}
+        {step === "step1" && (
+          <motion.div key="step1" {...slide} className="w-full max-w-sm">
+            <StepDots current={1} />
+            <div className="text-center mb-8">
+              <h2 className="font-display text-3xl text-[#2a1a1a] leading-tight mb-2">Pick your card</h2>
+              <p className="text-[#8a8580] text-sm">Each one is beautifully illustrated, just for her.</p>
             </div>
-
-            <div className="flex gap-4 justify-center">
-              {cards.map((card, idx) => (
-                <motion.div
-                  key={idx}
-                  onClick={() => handleFlip(idx)}
-                  className="relative cursor-pointer"
-                  style={{ perspective: 1000 }}
-                  whileHover={{ y: flipped === null ? -6 : 0 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <motion.div
-                    className="w-24 sm:w-28 h-36 sm:h-40 rounded-2xl"
-                    style={{
-                      transformStyle: "preserve-3d",
-                      transition: "transform 0.6s ease",
-                      transform: flipped === idx ? "rotateY(180deg)" : "rotateY(0deg)",
-                    }}
-                  >
-                    {/* Card Back */}
-                    <div
-                      className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center"
-                      style={{
-                        backfaceVisibility: "hidden",
-                        background: "linear-gradient(135deg, #2C2321, #4A3A30)",
-                      }}
-                    >
-                      <div className="text-2xl mb-1">🧘</div>
-                      <div className="text-white/30 text-xs font-medium tracking-widest">YOGA</div>
-                    </div>
-                    {/* Card Front */}
-                    <div
-                      className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center p-3"
-                      style={{
-                        backfaceVisibility: "hidden",
-                        transform: "rotateY(180deg)",
-                        backgroundColor: "#F5E6DA",
-                      }}
-                    >
-                      <div className="text-3xl mb-1">{card.emoji}</div>
-                      <p className="text-xs font-medium text-dark text-center leading-tight">{card.title}</p>
-                    </div>
-                  </motion.div>
-                </motion.div>
+            <div className="grid grid-cols-2 gap-6 justify-items-center">
+              {([1, 2, 3, 4] as CardStyleId[]).map((id) => (
+                <StyleThumbnail
+                  key={id}
+                  style={id}
+                  selected={cardStyle === id}
+                  onClick={() => handleStyleSelect(id)}
+                />
               ))}
             </div>
+          </motion.div>
+        )}
 
-            {/* Challenge question after flip */}
+        {/* ── STEP 2: Image or Flowers ── */}
+        {step === "step2" && (
+          <motion.div key="step2" {...slide} className="w-full max-w-sm">
+            <StepDots current={2} />
+            <div className="text-center mb-6">
+              <h2 className="font-display text-3xl text-[#2a1a1a] leading-tight mb-2">
+                Add something beautiful
+              </h2>
+              <p className="text-[#8a8580] text-sm">A photo of her, or pick her favourite flowers.</p>
+            </div>
+            <div className="space-y-4">
+              {/* Photo upload */}
+              <div
+                className="rounded-2xl p-5 border-2 cursor-pointer transition-all"
+                style={{
+                  borderColor: imageMode === "photo" ? "#E8A0A0" : "#E8E2DA",
+                  backgroundColor: imageMode === "photo" ? "#FFF5F5" : "white",
+                }}
+                onClick={() => fileRef.current?.click()}
+              >
+                <p className="font-medium text-[#2a1a1a] mb-1">Upload her photo</p>
+                <p className="text-sm text-[#8a8580] mb-3">We&apos;ll give it a warm, painted feel</p>
+                {imageDataUrl ? (
+                  <div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageDataUrl}
+                      alt="Preview"
+                      className="w-full h-28 object-cover rounded-xl"
+                      style={{ filter: "saturate(0.8) contrast(0.9) brightness(1.1) sepia(0.15)" }}
+                    />
+                    <p className="text-xs text-[#E8A0A0] mt-2 text-center">Looking beautiful ✓</p>
+                  </div>
+                ) : (
+                  <div
+                    className="rounded-xl border-2 border-dashed h-14 flex items-center justify-center"
+                    style={{ borderColor: "#E8E2DA" }}
+                  >
+                    <span className="text-sm text-[#8a8580]">Tap to upload JPG / PNG</span>
+                  </div>
+                )}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                />
+              </div>
+
+              {/* Flower picker */}
+              <div
+                className="rounded-2xl p-5 border-2 transition-all"
+                style={{
+                  borderColor: imageMode === "flowers" ? "#E8A0A0" : "#E8E2DA",
+                  backgroundColor: imageMode === "flowers" ? "#FFF5F5" : "white",
+                }}
+              >
+                <p className="font-medium text-[#2a1a1a] mb-1">Choose her flowers</p>
+                <p className="text-sm text-[#8a8580] mb-3">Pick her favourite bouquet</p>
+
+                {/* Preview selected bouquet */}
+                {flowerChoice && imageMode === "flowers" && (
+                  <div className="flex justify-center mb-3">
+                    <FlowerBouquet flower={flowerChoice} />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-5 gap-2">
+                  {FLOWERS.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => handleFlowerSelect(f.id)}
+                      className="flex flex-col items-center gap-1 py-2 rounded-xl border-2 transition-all cursor-pointer"
+                      style={{
+                        borderColor: flowerChoice === f.id ? "#E8A0A0" : "#E8E2DA",
+                        backgroundColor: flowerChoice === f.id ? "#FFF0F0" : "#FAFAFA",
+                      }}
+                    >
+                      <span className="text-2xl">{f.emoji}</span>
+                      <span className="text-[10px] text-[#2a1a1a] font-medium leading-tight text-center">{f.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <AnimatePresence>
-              {flipped !== null && activeCard && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+              {imageMode && (
+                <motion.button
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-10 text-center"
+                  onClick={() => setStep("step3")}
+                  className="w-full mt-5 py-4 rounded-2xl font-medium text-[15px] active:scale-[0.98] transition-all cursor-pointer"
+                  style={{ backgroundColor: "#E8A0A0", color: "#FDF6E3" }}
                 >
-                  <div className="bg-card rounded-2xl border border-option-border p-6 mb-6">
-                    <p className="font-display text-xl text-dark leading-snug mb-1">
-                      {activeCard.challenge}
-                    </p>
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handleAnswer("yes")}
-                      className="flex-1 py-4 rounded-2xl bg-dark text-white font-medium text-[15px] hover:bg-stone-800 active:scale-[0.98] transition-all"
-                    >
-                      {activeCard.yes.label}
-                    </button>
-                    <button
-                      onClick={() => handleAnswer("no")}
-                      className="flex-1 py-4 rounded-2xl border border-option-border bg-card text-dark font-medium text-[15px] hover:bg-[#F0EBE3] active:scale-[0.98] transition-all"
-                    >
-                      {activeCard.no.label}
-                    </button>
-                  </div>
-                </motion.div>
+                  Continue →
+                </motion.button>
               )}
             </AnimatePresence>
           </motion.div>
         )}
 
-        {/* ── RESULT ── */}
-        {step === "result" && result && activeCard && (
-          <motion.div
-            key="result"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
-            className="w-full max-w-sm text-center"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", bounce: 0.5 }}
-              className="text-6xl mb-4"
-            >
-              {activeCard.emoji}
-            </motion.div>
-
-            <p className="text-xs uppercase tracking-[0.25em] text-muted mb-2">
-              Your body is saying...
-            </p>
-            <h2 className="font-display text-3xl text-dark mb-8 leading-snug">
-              {activeCard.title}
-            </h2>
-
-            <div
-              className="rounded-2xl p-6 mb-6 text-left"
-              style={{
-                backgroundColor: "rgba(255,255,255,0.7)",
-                border: `1px solid ${result.accent}30`,
-              }}
-            >
-              <p
-                className="text-[15px] font-medium leading-relaxed"
-                style={{ color: result.accent }}
-              >
-                {result.insight}
-              </p>
+        {/* ── STEP 3: About Mum ── */}
+        {step === "step3" && (
+          <motion.div key="step3" {...slide} className="w-full max-w-sm">
+            <StepDots current={3} />
+            <div className="text-center mb-8">
+              <h2 className="font-display text-3xl text-[#2a1a1a] leading-tight mb-2">
+                Tell us about her
+              </h2>
             </div>
+            <form onSubmit={handleGenerate} className="space-y-6">
+              <div>
+                <p className="text-sm font-medium text-[#2a1a1a] mb-3">What do you call her?</p>
+                <div className="flex flex-wrap gap-2">
+                  {MUM_NAMES.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setSelectedMumTag(n)}
+                      className="px-4 py-2 rounded-full text-sm font-medium transition-all cursor-pointer"
+                      style={{
+                        backgroundColor: selectedMumTag === n ? "#E8A0A0" : "#F0EBE3",
+                        color: selectedMumTag === n ? "#FDF6E3" : "#2a1a1a",
+                      }}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                {selectedMumTag === "Other" && (
+                  <input
+                    type="text"
+                    value={customMumName}
+                    onChange={(e) => setCustomMumName(e.target.value)}
+                    placeholder="What do you call her?"
+                    className="mt-3 w-full px-4 py-3 rounded-xl border border-[#E8E2DA] bg-white text-[#2a1a1a] text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A0A0]/40"
+                  />
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[#2a1a1a] mb-2">
+                  One thing about her you admire the most.
+                </p>
+                <input
+                  type="text"
+                  value={trait}
+                  onChange={(e) => setTrait(e.target.value)}
+                  placeholder="Her strength, her laugh, her patience..."
+                  className="w-full px-4 py-3 rounded-xl border border-[#E8E2DA] bg-white text-[#2a1a1a] text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A0A0]/40"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!mumName || !trait.trim()}
+                className="w-full py-4 rounded-2xl font-medium text-[15px] active:scale-[0.98] transition-all disabled:opacity-40 cursor-pointer"
+                style={{ backgroundColor: "#E8A0A0", color: "#FDF6E3" }}
+              >
+                Generate her card →
+              </button>
+            </form>
+          </motion.div>
+        )}
 
-            <a
-              href="/"
-              className="block w-full py-4 rounded-2xl text-white font-medium text-[15px] hover:opacity-90 active:scale-[0.98] transition-all text-center mb-4"
-              style={{ backgroundColor: result.accent }}
-            >
-              Try more tools →
-            </a>
+        {/* ── LOADING ── */}
+        {step === "loading" && (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full max-w-sm flex flex-col items-center"
+          >
+            <QuillAnimation />
+          </motion.div>
+        )}
 
-            <button
-              onClick={handleReset}
-              className="text-sm text-muted hover:text-dark transition"
-            >
-              Pick another card
-            </button>
+        {/* ── STEP 4: Final Card ── */}
+        {step === "step4" && (
+          <motion.div
+            key="step4"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="w-full flex flex-col items-center gap-5"
+          >
+            <FinalCard
+              cardStyle={cardStyle}
+              imageDataUrl={imageDataUrl}
+              flowerChoice={flowerChoice}
+              mumName={mumName}
+              poem={poem}
+              userName={name}
+            />
+            <div className="w-full max-w-[320px] space-y-3">
+              <button
+                onClick={handleWhatsApp}
+                className="w-full py-4 rounded-2xl font-medium text-[15px] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                style={{ backgroundColor: "#25D366", color: "white" }}
+              >
+                Send to her on WhatsApp 💚
+              </button>
+              <button
+                onClick={handleDownload}
+                className="w-full py-3.5 rounded-2xl font-medium text-[15px] active:scale-[0.98] transition-all border cursor-pointer"
+                style={{ borderColor: "#E8E2DA", backgroundColor: "white", color: "#2a1a1a" }}
+              >
+                Download card 📥
+              </button>
+              <button
+                onClick={handleReset}
+                className="w-full text-sm text-[#8a8580] hover:text-[#2a1a1a] transition py-2 cursor-pointer"
+              >
+                Make another card
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

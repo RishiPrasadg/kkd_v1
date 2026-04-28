@@ -45,13 +45,13 @@ export default function RootLayout({
                 Yoga Age Quiz
               </Link>
               <Link href="/puzzle" className="hover:text-stone-800 transition">
-                Pose Puzzle
+                Spin & Hit
               </Link>
               <Link href="/tool3" className="hover:text-stone-800 transition">
-                Desi Ghar Bingo
+                Desi Household
               </Link>
               <Link href="/tool4" className="hover:text-stone-800 transition">
-                Flip a Card
+                Mother's Day Card
               </Link>
             </div>
             <MobileMenu />
@@ -75,9 +75,9 @@ function MobileMenu() {
         </summary>
         <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-stone-200 py-2 z-50">
           <Link href="/quiz" className="block px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">Yoga Age Quiz</Link>
-          <Link href="/puzzle" className="block px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">Pose Puzzle</Link>
-          <Link href="/tool3" className="block px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">Desi Ghar Bingo</Link>
-          <Link href="/tool4" className="block px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">Flip a Card</Link>
+          <Link href="/puzzle" className="block px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">Spin & Hit</Link>
+          <Link href="/tool3" className="block px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">Desi Household</Link>
+          <Link href="/tool4" className="block px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">Mother's Day Card</Link>
         </div>
       </details>
     </div>

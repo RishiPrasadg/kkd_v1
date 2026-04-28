@@ -51,13 +51,12 @@ export default function QuestionCard({
               key={opt.label}
               onClick={() => handleSelect(idx, opt.score)}
               disabled={selectedIdx !== null}
-              className={`w-full text-left px-5 py-4 rounded-full border transition-all text-[15px] sm:text-base min-h-[56px] cursor-pointer disabled:cursor-default
+              className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all text-[15px] sm:text-base min-h-[56px] cursor-pointer disabled:cursor-default active:scale-[0.98]
                 ${
                   isSelected
-                    ? "bg-sage-light border-sage text-dark font-medium"
-                    : "bg-option-bg border-option-border text-body-text hover:bg-[#F0EBE3] hover:border-[#D4CEC4]"
+                    ? "bg-terracotta/10 border-terracotta text-dark font-medium"
+                    : "bg-white/80 border-stone-200 text-stone-700 hover:border-stone-400 hover:bg-white"
                 }
-                active:scale-[0.98]
               `}
             >
               {opt.label}

@@ -43,7 +43,11 @@ export default function Landing({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, x: -40 }}
       transition={{ duration: 0.4 }}
-      className="min-h-[100dvh] flex flex-col items-center justify-center px-5 py-16 bg-peach"
+      className="min-h-[100dvh] flex flex-col items-center justify-center px-5 py-16"
+      style={{
+        background:
+          "radial-gradient(ellipse at 55% 30%, #D94F2C 0%, #E86B2B 18%, #F5923B 38%, #F9BF7A 58%, #FDE0B8 78%, #FDF3EB 100%)",
+      }}
     >
       <div className="w-full max-w-sm">
         <motion.div
@@ -52,11 +56,11 @@ export default function Landing({
           transition={{ delay: 0.15, duration: 0.5 }}
           className="text-center mb-12"
         >
-          <h1 className="font-display text-[2.5rem] sm:text-5xl leading-[1.1] text-dark">
+          <h1 className="font-display text-[2.5rem] sm:text-5xl leading-[1.1] text-white drop-shadow-md">
             Aapki Body Ka
-            <span className="block text-terracotta mt-1">Yoga Age Kya Hai?</span>
+            <span className="block text-white/90 mt-1">Yoga Age Kya Hai?</span>
           </h1>
-          <p className="mt-5 text-base text-muted leading-relaxed">
+          <p className="mt-5 text-base text-white/80 leading-relaxed">
             5 simple questions. Find out in 2 minutes.
           </p>
         </motion.div>
@@ -74,10 +78,10 @@ export default function Landing({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
-              className="w-full px-5 py-4 rounded-2xl border border-option-border bg-card text-dark text-[15px] placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-terracotta/30 focus:border-terracotta/40 transition"
+              className="w-full px-5 py-4 rounded-2xl border border-white/40 bg-white/70 text-dark text-[15px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-white/60 focus:border-white/70 transition backdrop-blur-sm"
             />
             {errors.name && (
-              <p className="mt-1.5 text-xs text-red-600 pl-1">{errors.name}</p>
+              <p className="mt-1.5 text-xs text-red-700 pl-1">{errors.name}</p>
             )}
           </div>
 
@@ -87,10 +91,10 @@ export default function Landing({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="10-digit phone number"
-              className="w-full px-5 py-4 rounded-2xl border border-option-border bg-card text-dark text-[15px] placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-terracotta/30 focus:border-terracotta/40 transition"
+              className="w-full px-5 py-4 rounded-2xl border border-white/40 bg-white/70 text-dark text-[15px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-white/60 focus:border-white/70 transition backdrop-blur-sm"
             />
             {errors.phone && (
-              <p className="mt-1.5 text-xs text-red-600 pl-1">{errors.phone}</p>
+              <p className="mt-1.5 text-xs text-red-700 pl-1">{errors.phone}</p>
             )}
           </div>
 
@@ -102,7 +106,7 @@ export default function Landing({
               value={age}
               onChange={(e) => setAge(e.target.value)}
               placeholder="Your age (18-80)"
-              className="w-full px-5 py-4 rounded-2xl border border-option-border bg-card text-dark text-[15px] placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-terracotta/30 focus:border-terracotta/40 transition"
+              className="w-full px-5 py-4 rounded-2xl border border-white/40 bg-white/70 text-dark text-[15px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-white/60 focus:border-white/70 transition backdrop-blur-sm"
             />
             {errors.age && (
               <p className="mt-1.5 text-xs text-red-600 pl-1">{errors.age}</p>
@@ -111,7 +115,7 @@ export default function Landing({
 
           <button
             type="submit"
-            className="w-full py-4 rounded-2xl bg-dark text-white font-medium text-[15px] hover:bg-stone-800 active:scale-[0.98] transition-all cursor-pointer mt-2"
+            className="w-full py-4 rounded-2xl bg-stone-900 text-white font-medium text-[15px] hover:bg-stone-800 active:scale-[0.98] transition-all cursor-pointer mt-2 shadow-lg"
           >
             Shuru Karo &rarr;
           </button>
@@ -121,7 +125,7 @@ export default function Landing({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="text-center text-xs text-muted/60 mt-8"
+          className="text-center text-xs text-white/50 mt-8"
         >
           Your data stays private. Always.
         </motion.p>

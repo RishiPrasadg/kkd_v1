@@ -18,11 +18,11 @@ const QUESTIONS_PER_SESSION = 5;
 
 // 5 background colors — one per question
 const BG_COLORS = [
-  "#F5E6DA", // warm peach
-  "#F0E4D4", // warm beige
-  "#E3E5CC", // sage green
-  "#E8CEBF", // dusty rose
-  "#F0E8DF", // warm cream
+  "#FDE8D8", // warm peach
+  "#FCE0C8", // light coral
+  "#FAD8B8", // apricot
+  "#F9D0A8", // amber peach
+  "#F8E4CC", // soft cream
 ];
 
 export default function QuizPage() {
@@ -88,9 +88,9 @@ export default function QuizPage() {
           step === "quiz"
             ? BG_COLORS[currentIndex] || BG_COLORS[4]
             : step === "landing"
-            ? "#F5E6DA"
+            ? "#D94F2C"
             : step === "submitting"
-            ? "#EDE3CC"
+            ? "#F9BF7A"
             : "transparent",
       }}
     >
