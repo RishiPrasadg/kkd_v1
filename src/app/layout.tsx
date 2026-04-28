@@ -16,9 +16,9 @@ const body = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Yoga Age Quiz",
+  title: "PlayBreak — Quick Fun Games",
   description:
-    "Discover your Yoga Age with 5 body-awareness questions.",
+    "Take a quick break with fun, interactive games. Quiz, spin & hit, and more!",
 };
 
 export default function RootLayout({
@@ -38,7 +38,7 @@ export default function RootLayout({
               href="/"
               className="font-display text-lg font-bold text-stone-800 tracking-tight"
             >
-              Yoga Tools
+              PlayBreak
             </Link>
             <div className="hidden sm:flex items-center gap-6 text-sm font-medium text-stone-500">
               <Link href="/quiz" className="hover:text-stone-800 transition">

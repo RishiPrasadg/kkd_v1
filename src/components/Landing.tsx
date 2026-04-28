@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { isLeadCaptured, getSavedLead, saveLead } from "@/lib/leads";
+import { COUNTRY_CODES } from "@/lib/countryCodes";
 
 type UserData = { name: string; phone: string; age: number };
 
@@ -12,13 +14,26 @@ export default function Landing({
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
   const [age, setAge] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [alreadyCaptured, setAlreadyCaptured] = useState(false);
+
+  useEffect(() => {
+    if (isLeadCaptured()) {
+      setAlreadyCaptured(true);
+      const saved = getSavedLead();
+      if (saved) {
+        setName(saved.name);
+        setPhone(saved.phone.replace("+91", ""));
+      }
+    }
+  }, []);
 
   function validate(): boolean {
     const e: Record<string, string> = {};
     if (name.trim().length < 2) e.name = "Name must be at least 2 characters";
-    if (!/^\d{10}$/.test(phone.replace(/\s/g, "")))
+    if (!alreadyCaptured && !/^\d{10}$/.test(phone.replace(/\s/g, "")))
       e.phone = "Enter a valid 10-digit phone number";
     const ageNum = parseInt(age, 10);
     if (isNaN(ageNum) || ageNum < 18 || ageNum > 80)
@@ -30,9 +45,13 @@ export default function Landing({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
+    const cleanPhone = phone.replace(/\s/g, "");
+    if (!alreadyCaptured) {
+      saveLead(name.trim(), `${countryCode}${cleanPhone}`, "quiz");
+    }
     onStart({
       name: name.trim(),
-      phone: phone.replace(/\s/g, ""),
+      phone: `${countryCode}${cleanPhone}`,
       age: parseInt(age, 10),
     });
   }
@@ -85,18 +104,31 @@ export default function Landing({
             )}
           </div>
 
-          <div>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="10-digit phone number"
-              className="w-full px-5 py-4 rounded-2xl border border-white/40 bg-white/70 text-dark text-[15px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-white/60 focus:border-white/70 transition backdrop-blur-sm"
-            />
-            {errors.phone && (
-              <p className="mt-1.5 text-xs text-red-700 pl-1">{errors.phone}</p>
-            )}
-          </div>
+          {!alreadyCaptured && (
+            <div>
+              <div className="flex rounded-2xl border border-white/40 bg-white/70 backdrop-blur-sm overflow-hidden focus-within:ring-2 focus-within:ring-white/60">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="px-2 py-4 text-[14px] text-stone-600 font-medium border-r border-white/30 bg-white/30 focus:outline-none cursor-pointer"
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Phone number"
+                  className="flex-1 px-4 py-4 bg-transparent text-dark text-[15px] placeholder:text-stone-400 focus:outline-none"
+                />
+              </div>
+              {errors.phone && (
+                <p className="mt-1.5 text-xs text-red-700 pl-1">{errors.phone}</p>
+              )}
+            </div>
+          )}
 
           <div>
             <input

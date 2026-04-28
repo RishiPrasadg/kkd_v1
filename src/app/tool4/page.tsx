@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pinyon_Script } from "next/font/google";
+import { isLeadCaptured, getSavedLead, saveLead } from "@/lib/leads";
+import { COUNTRY_CODES } from "@/lib/countryCodes";
 
 const pinyonScript = Pinyon_Script({ subsets: ["latin"], weight: "400" });
 
@@ -254,7 +256,7 @@ function FinalCard({
         {/* Image or Bouquet — capped so it never pushes poem out */}
         <div
           className="flex-shrink-0 flex items-center justify-center overflow-hidden"
-          style={{ width: "100%", maxHeight: "40%", marginBottom: 6 }}
+          style={{ width: "100%", maxHeight: "32%", marginBottom: 6 }}
         >
           {imageDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -284,7 +286,7 @@ function FinalCard({
               fontSize: 15,
               color: "#2a1a1a",
               whiteSpace: "pre-line",
-              lineHeight: 1.75,
+              lineHeight: 1.45,
             }}
           >
             {poem}
@@ -329,7 +331,20 @@ export default function MothersDayCardPage() {
   const [step, setStep] = useState<Step>("landing");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [alreadyCaptured, setAlreadyCaptured] = useState(false);
+
+  useEffect(() => {
+    if (isLeadCaptured()) {
+      setAlreadyCaptured(true);
+      const saved = getSavedLead();
+      if (saved) {
+        setName(saved.name);
+        setPhone(saved.phone.replace("+91", ""));
+      }
+    }
+  }, []);
   const [cardStyle, setCardStyle] = useState<CardStyleId>(1);
   const [imageMode, setImageMode] = useState<"photo" | "flowers" | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
@@ -345,7 +360,8 @@ export default function MothersDayCardPage() {
   function validateLanding() {
     const e: Record<string, string> = {};
     if (name.trim().length < 2) e.name = "Enter your name";
-    if (!/^\d{10}$/.test(phone.replace(/\s/g, ""))) e.phone = "Enter a valid 10-digit number";
+    if (!alreadyCaptured && !/^\d{10}$/.test(phone.replace(/\s/g, "")))
+      e.phone = "Enter a valid 10-digit number";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -353,6 +369,9 @@ export default function MothersDayCardPage() {
   function handleStart(e: React.FormEvent) {
     e.preventDefault();
     if (!validateLanding()) return;
+    if (!alreadyCaptured) {
+      saveLead(name.trim(), `${countryCode}${phone.replace(/\s/g, "")}`, "mothers-card");
+    }
     setStep("step1");
   }
 
@@ -382,18 +401,7 @@ export default function MothersDayCardPage() {
     if (!mumName || !trait.trim()) return;
     setStep("loading");
 
-    // Save name + phone locally
-    fetch("/api/leads", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: name.trim(),
-        phone: phone.replace(/\s/g, ""),
-        source: "mothers-card",
-        gender: "",
-        age: "",
-      }),
-    }).catch(() => {});
+    // Lead already saved in handleStart
 
     try {
       const res = await fetch("/api/mothers-card", {
@@ -465,16 +473,29 @@ export default function MothersDayCardPage() {
                 />
                 {errors.name && <p className="mt-1.5 text-xs text-red-500 pl-1">{errors.name}</p>}
               </div>
-              <div>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="10-digit phone number"
-                  className="w-full px-5 py-4 rounded-2xl border border-[#E8E2DA] bg-white text-[#2a1a1a] text-[15px] placeholder:text-[#8a8580]/60 focus:outline-none focus:ring-2 focus:ring-[#E8A0A0]/40 transition"
-                />
-                {errors.phone && <p className="mt-1.5 text-xs text-red-500 pl-1">{errors.phone}</p>}
-              </div>
+              {!alreadyCaptured && (
+                <div>
+                  <div className="flex rounded-2xl border border-[#E8E2DA] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[#E8A0A0]/40">
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                      className="px-2 py-4 text-[14px] text-[#8a8580] font-medium bg-[#F5F0EA] border-r border-[#E8E2DA] focus:outline-none cursor-pointer"
+                    >
+                      {COUNTRY_CODES.map((c) => (
+                        <option key={c.code} value={c.code}>{c.label}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Phone number"
+                      className="flex-1 px-4 py-4 bg-transparent text-[#2a1a1a] text-[15px] placeholder:text-[#8a8580]/60 focus:outline-none"
+                    />
+                  </div>
+                  {errors.phone && <p className="mt-1.5 text-xs text-red-500 pl-1">{errors.phone}</p>}
+                </div>
+              )}
               <button
                 type="submit"
                 className="w-full py-4 rounded-2xl font-medium text-[15px] active:scale-[0.98] transition-all mt-2 cursor-pointer"

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Boogaloo, DM_Sans } from "next/font/google";
 import { motion, AnimatePresence } from "framer-motion";
+import { isLeadCaptured, getSavedLead, saveLead } from "@/lib/leads";
+import { COUNTRY_CODES } from "@/lib/countryCodes";
 
 const boogaloo = Boogaloo({ subsets: ["latin"], weight: "400", variable: "--font-boogaloo" });
 const dmSans = DM_Sans({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-dm" });
 
-const BG = "#FFFFE0";
+const BG = "#F5A623";
 const DARK = "#1a1a1a";
 const CREAM = "#FDF6E3";
 
@@ -251,6 +253,7 @@ export default function DesiBingoPage() {
   const [step, setStep] = useState<Step>("game");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [flipped, setFlipped] = useState<boolean[]>(Array(9).fill(false));
   const [showConfetti, setShowConfetti] = useState(false);
@@ -275,24 +278,20 @@ export default function DesiBingoPage() {
   }
 
   function handleGoToEntry() {
+    if (isLeadCaptured()) {
+      // Skip lead capture — go straight to result
+      playShehnai();
+      setStep("result");
+      setShowConfetti(true);
+      return;
+    }
     setStep("entry");
   }
 
   function handleSubmitEntry(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
-    const res = getResult(score);
-    fetch("/api/leads", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: name.trim(),
-        phone: phone.replace(/\s/g, ""),
-        source: `bingo-${res.name.replace(/\s/g, "-").toLowerCase()}`,
-        gender: "",
-        age: "",
-      }),
-    }).catch(() => {});
+    saveLead(name.trim(), `${countryCode}${phone.replace(/\s/g, "")}`, "bingo");
     playShehnai();
     setStep("result");
     setShowConfetti(true);
@@ -464,13 +463,24 @@ export default function DesiBingoPage() {
                 </div>
                 <div>
                   <label style={labelStyle}>Phone Number</label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    placeholder="10-digit number"
-                    style={inputStyle}
-                  />
+                  <div style={{ display: "flex", borderRadius: "6px", overflow: "hidden", border: `2.5px solid ${DARK}` }}>
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                      style={{ padding: "0 6px", background: "#F5E6C8", fontFamily: dmSans.style.fontFamily, fontSize: "14px", color: DARK, fontWeight: 600, borderRight: `2px solid ${DARK}`, border: "none", outline: "none", cursor: "pointer" }}
+                    >
+                      {COUNTRY_CODES.map((c) => (
+                        <option key={c.code} value={c.code}>{c.label}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      placeholder="Phone number"
+                      style={{ ...inputStyle, border: "none", borderRadius: 0, flex: 1 }}
+                    />
+                  </div>
                   {errors.phone && (
                     <p style={{ margin: "5px 0 0 2px", fontSize: "12px", color: "#C0392B", fontWeight: 700 }}>
                       {errors.phone}

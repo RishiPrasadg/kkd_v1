@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { isLeadCaptured, saveLead } from "@/lib/leads";
+import { COUNTRY_CODES } from "@/lib/countryCodes";
 
 // ─── Board items ──────────────────────────────────────────────────────────
 const ITEMS = [
@@ -42,7 +44,11 @@ export default function DartPage() {
   // Lead capture
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
   const [submitting, setSubmitting] = useState(false);
+
+  // Dart target position (for animating dart to the hit item)
+  const [dartTarget, setDartTarget] = useState<{ x: number; y: number } | null>(null);
 
   // Spin the board
   useEffect(() => {
@@ -75,9 +81,23 @@ export default function DartPage() {
     );
     const isMiss = diff > SLICE * 0.38;
 
+    // Calculate the target position for the dart (the food item's current screen position)
+    if (!isMiss) {
+      const itemAngle = nearest * SLICE - 90;
+      const totalAngle = itemAngle + R; // item angle + current board rotation
+      const rad = (totalAngle * Math.PI) / 180;
+      // Position relative to the board center (145,145 is center of 290px board)
+      const tx = 145 + Math.cos(rad) * BOARD_R;
+      const ty = 145 + Math.sin(rad) * BOARD_R;
+      setDartTarget({ x: tx, y: ty });
+    } else {
+      setDartTarget({ x: 145, y: 145 }); // miss goes to center
+    }
+
     // Dart flight takes 400ms, then show result
     setTimeout(() => {
       setDartFlying(false);
+      setDartTarget(null);
 
       if (isMiss) {
         setLastHit({ item: null, miss: true });
@@ -93,7 +113,7 @@ export default function DartPage() {
       setThrowing(false);
 
       if (remaining <= 0) {
-        setTimeout(() => setPhase("lead_capture"), 1800);
+        setTimeout(() => setPhase(isLeadCaptured() ? "score" : "lead_capture"), 1800);
       }
 
       setTimeout(() => setHitIdx(null), 600);
@@ -104,11 +124,7 @@ export default function DartPage() {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) return;
     setSubmitting(true);
-    await fetch("/api/leads", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, phone, score, source: "dart" }),
-    });
+    await saveLead(name.trim(), `${countryCode}${phone.replace(/\s/g, "")}`, "dart");
     setSubmitting(false);
     setPhase("score");
   }
@@ -125,7 +141,7 @@ export default function DartPage() {
         : { emoji: "😅", title: "Oops!", sub: "Watch out for those junk foods next time!" };
 
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#FAF7F2" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#111111" }}>
         <motion.div
           className="text-center px-6"
           initial={{ scale: 0.8, opacity: 0 }}
@@ -133,15 +149,15 @@ export default function DartPage() {
           transition={{ type: "spring", stiffness: 200, damping: 18 }}
         >
           <div className="text-6xl mb-4">{msg.emoji}</div>
-          <h2 className="text-2xl font-bold mb-3 font-display">{msg.title}</h2>
+          <h2 className="text-2xl font-bold mb-3 font-display text-white">{msg.title}</h2>
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.3, type: "spring", stiffness: 250 }}
             className="inline-block rounded-2xl px-8 py-4 mb-4"
-            style={{ background: "white", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}
+            style={{ background: "#1a1a1a", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}
           >
-            <p className="text-sm" style={{ color: "#8a8580" }}>Your Score</p>
+            <p className="text-sm" style={{ color: "#666" }}>Your Score</p>
             <p
               className="text-4xl font-bold"
               style={{ color: score >= 0 ? "#7D9B76" : "#C4622D" }}
@@ -149,8 +165,8 @@ export default function DartPage() {
               {score}
             </p>
           </motion.div>
-          <p className="text-sm" style={{ color: "#8a8580" }}>{msg.sub}</p>
-          <p className="text-xs mt-4" style={{ color: "#B8B0A8" }}>
+          <p className="text-sm" style={{ color: "#aaa" }}>{msg.sub}</p>
+          <p className="text-xs mt-4" style={{ color: "#777" }}>
             Thanks for playing, {name}! We&apos;ll be in touch.
           </p>
         </motion.div>
@@ -161,7 +177,7 @@ export default function DartPage() {
   // ── Lead capture (NO score shown — score is the reward for submitting) ──
   if (phase === "lead_capture") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6" style={{ background: "#FAF7F2" }}>
+      <div className="min-h-screen flex items-center justify-center px-6" style={{ background: "#111111" }}>
         <motion.div
           className="w-full max-w-xs"
           initial={{ opacity: 0, y: 20 }}
@@ -169,16 +185,16 @@ export default function DartPage() {
         >
           <div className="text-center mb-6">
             <div className="text-5xl mb-3">🎯</div>
-            <h2 className="text-2xl font-bold font-display mb-1">Game Over!</h2>
+            <h2 className="text-2xl font-bold font-display mb-1 text-white">Game Over!</h2>
             <div
               className="inline-block rounded-xl px-5 py-2 mt-2 mb-2"
-              style={{ background: "#F0EBE2" }}
+              style={{ background: "#222" }}
             >
-              <p className="text-sm font-medium" style={{ color: "#8a8580" }}>
+              <p className="text-sm font-medium" style={{ color: "#aaa" }}>
                 🔒 Your score is ready
               </p>
             </div>
-            <p className="text-sm mt-2" style={{ color: "#8a8580" }}>
+            <p className="text-sm mt-2" style={{ color: "#aaa" }}>
               Enter your details to reveal your score!
             </p>
           </div>
@@ -189,16 +205,30 @@ export default function DartPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
-              style={{ border: "1.5px solid #E0D8D0", background: "white" }}
+              style={{ border: "1.5px solid #333", background: "#1a1a1a", color: "#eee" }}
             />
-            <input
-              type="tel"
-              placeholder="Phone number"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
-              style={{ border: "1.5px solid #E0D8D0", background: "white" }}
-            />
+            <div
+              className="flex rounded-2xl overflow-hidden"
+              style={{ border: "1.5px solid #333", background: "#1a1a1a" }}
+            >
+              <select
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                className="px-2 py-3 text-[13px] font-medium focus:outline-none cursor-pointer"
+                style={{ background: "#222", color: "#ccc", borderRight: "1.5px solid #333", border: "none" }}
+              >
+                {COUNTRY_CODES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.label}</option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                placeholder="Phone number"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="flex-1 px-3 py-3 text-sm outline-none bg-transparent text-white placeholder:text-gray-500"
+              />
+            </div>
             <button
               type="submit"
               disabled={submitting || !name.trim() || !phone.trim()}
@@ -215,12 +245,12 @@ export default function DartPage() {
 
   // ── Playing ──
   return (
-    <div className="min-h-screen flex flex-col items-center" style={{ background: "#FAF7F2" }}>
+    <div className="min-h-screen flex flex-col items-center" style={{ background: "#111111" }}>
       <div className="w-full max-w-sm px-5 pt-6 pb-8 flex flex-col items-center">
 
         {/* Header: throws remaining */}
         <div className="w-full flex justify-between items-center mb-4">
-          <p className="text-sm font-medium" style={{ color: "#8a8580" }}>
+          <p className="text-sm font-medium" style={{ color: "#aaa" }}>
             Throws left: <span className="font-bold" style={{ color: "#C4622D" }}>{throwsLeft}</span>
           </p>
           <div className="flex items-center gap-1.5">
@@ -231,7 +261,7 @@ export default function DartPage() {
                   width: 10,
                   height: 10,
                   borderRadius: "50%",
-                  background: i < TOTAL_THROWS - throwsLeft ? "#C4622D" : "#E0D8D0",
+                  background: i < TOTAL_THROWS - throwsLeft ? "#C4622D" : "#444",
                   transition: "background 0.3s",
                 }}
               />
@@ -241,7 +271,7 @@ export default function DartPage() {
 
         {/* Title + instructions */}
         <h1
-          className="text-center font-bold mb-1"
+          className="text-center font-bold mb-1 text-white"
           style={{
             fontSize: 22,
             fontFamily: "var(--font-display, 'Fraunces', Georgia, serif)",
@@ -249,12 +279,12 @@ export default function DartPage() {
         >
           Spin &amp; Hit!
         </h1>
-        <p className="text-sm text-center mb-2" style={{ color: "#5A5550" }}>
+        <p className="text-sm text-center mb-2" style={{ color: "#999" }}>
           The board is spinning &mdash; tap to hit what&apos;s at the arrow
         </p>
         <div
           className="flex gap-4 text-xs font-medium mb-6 px-4 py-2 rounded-xl"
-          style={{ background: "#F0EBE2", color: "#6A6560" }}
+          style={{ background: "#222", color: "#bbb" }}
         >
           <span>🥗 Healthy = <b style={{ color: "#7D9B76" }}>+10</b></span>
           <span>🍔 Junk = <b style={{ color: "#C4622D" }}>−5</b></span>
@@ -286,9 +316,9 @@ export default function DartPage() {
           <div
             className="absolute inset-0 rounded-full"
             style={{
-              background: "conic-gradient(from 0deg, #FAF7F2 0deg, #F0EBE2 18deg, #FAF7F2 36deg, #F0EBE2 54deg, #FAF7F2 72deg, #F0EBE2 90deg, #FAF7F2 108deg, #F0EBE2 126deg, #FAF7F2 144deg, #F0EBE2 162deg, #FAF7F2 180deg, #F0EBE2 198deg, #FAF7F2 216deg, #F0EBE2 234deg, #FAF7F2 252deg, #F0EBE2 270deg, #FAF7F2 288deg, #F0EBE2 306deg, #FAF7F2 324deg, #F0EBE2 342deg)",
-              border: "5px solid #D8D0C4",
-              boxShadow: "0 4px 24px rgba(0,0,0,0.14), inset 0 0 40px rgba(0,0,0,0.04)",
+              background: "conic-gradient(from 0deg, #1a1a1a 0deg, #252525 18deg, #1a1a1a 36deg, #252525 54deg, #1a1a1a 72deg, #252525 90deg, #1a1a1a 108deg, #252525 126deg, #1a1a1a 144deg, #252525 162deg, #1a1a1a 180deg, #252525 198deg, #1a1a1a 216deg, #252525 234deg, #1a1a1a 252deg, #252525 270deg, #1a1a1a 288deg, #252525 306deg, #1a1a1a 324deg, #252525 342deg)",
+              border: "5px solid #444",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.5), inset 0 0 40px rgba(0,0,0,0.2)",
             }}
           />
 
@@ -297,15 +327,15 @@ export default function DartPage() {
             className="absolute rounded-full"
             style={{
               top: "22%", left: "22%", width: "56%", height: "56%",
-              border: "2px solid #DDD6CC",
+              border: "2px solid #444",
             }}
           />
           <div
             className="absolute rounded-full"
             style={{
               top: "40%", left: "40%", width: "20%", height: "20%",
-              background: "#EDE6DC",
-              border: "2px solid #D8D0C4",
+              background: "#2a2a2a",
+              border: "2px solid #444",
             }}
           />
           <div
@@ -367,12 +397,12 @@ export default function DartPage() {
 
           {/* Dart flying animation */}
           <AnimatePresence>
-            {dartFlying && (
+            {dartFlying && dartTarget && (
               <motion.div
-                className="absolute left-1/2 z-30"
-                style={{ marginLeft: -14 }}
-                initial={{ bottom: -60, opacity: 1, scale: 1 }}
-                animate={{ bottom: 120, opacity: 1, scale: 0.7 }}
+                className="absolute z-30"
+                style={{ marginLeft: -14, marginTop: -24 }}
+                initial={{ left: 145, top: 320, opacity: 1, scale: 1 }}
+                animate={{ left: dartTarget.x, top: dartTarget.y, opacity: 1, scale: 0.7 }}
                 exit={{ opacity: 0, scale: 0.3 }}
                 transition={{ duration: 0.35, ease: "easeIn" }}
               >
@@ -400,7 +430,7 @@ export default function DartPage() {
                 {lastHit.miss ? (
                   <span
                     className="inline-block text-sm font-semibold px-4 py-2 rounded-xl"
-                    style={{ background: "#F0EBE2", color: "#8a8580" }}
+                    style={{ background: "#333", color: "#aaa" }}
                   >
                     Missed! 0 points
                   </span>

@@ -247,7 +247,7 @@ export default function Result({
             className="block w-full py-4 rounded-2xl text-white font-medium text-[15px] hover:opacity-90 active:scale-[0.98] transition-all text-center min-h-[48px]"
             style={{ backgroundColor: theme.accent }}
           >
-            Try another tool &rarr;
+            Try another game &rarr;
           </a>
 
           {/* Shareable Card Preview */}
