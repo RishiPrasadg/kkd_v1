@@ -25,7 +25,7 @@ const tools = [
       "9 things. One house. Tap everything that's in your home and find out your Desi score.",
     href: "/tool3",
     icon: "🏠",
-    color: "bg-[#FFFFE0] border-[#E8C84A] hover:border-[#C47D10]",
+    color: "bg-[#FEF3D9] border-[#F5A623] hover:border-[#C47D10]",
     ready: true,
   },
   {

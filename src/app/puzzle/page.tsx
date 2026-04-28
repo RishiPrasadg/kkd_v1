@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+// AnimatePresence kept for lastHit feedback animation
 import { isLeadCaptured, saveLead } from "@/lib/leads";
 import { COUNTRY_CODES } from "@/lib/countryCodes";
 
@@ -33,7 +34,6 @@ export default function DartPage() {
   const [score, setScore] = useState(0);
   const [throwsLeft, setThrowsLeft] = useState(TOTAL_THROWS);
   const [throwing, setThrowing] = useState(false);
-  const [dartFlying, setDartFlying] = useState(false);
   const [lastHit, setLastHit] = useState<{
     item: (typeof ITEMS)[number] | null;
     miss: boolean;
@@ -46,9 +46,6 @@ export default function DartPage() {
   const [phone, setPhone] = useState("");
   const [countryCode, setCountryCode] = useState("+91");
   const [submitting, setSubmitting] = useState(false);
-
-  // Dart target position (for animating dart to the hit item)
-  const [dartTarget, setDartTarget] = useState<{ x: number; y: number } | null>(null);
 
   // Spin the board
   useEffect(() => {
@@ -69,7 +66,6 @@ export default function DartPage() {
     setThrowing(true);
     setLastHit(null);
     setHitIdx(null);
-    setDartFlying(true);
 
     const R = angleRef.current;
     const hitAngle = ((360 - R) % 360 + 360) % 360;
@@ -81,24 +77,7 @@ export default function DartPage() {
     );
     const isMiss = diff > SLICE * 0.38;
 
-    // Calculate the target position for the dart (the food item's current screen position)
-    if (!isMiss) {
-      const itemAngle = nearest * SLICE - 90;
-      const totalAngle = itemAngle + R; // item angle + current board rotation
-      const rad = (totalAngle * Math.PI) / 180;
-      // Position relative to the board center (145,145 is center of 290px board)
-      const tx = 145 + Math.cos(rad) * BOARD_R;
-      const ty = 145 + Math.sin(rad) * BOARD_R;
-      setDartTarget({ x: tx, y: ty });
-    } else {
-      setDartTarget({ x: 145, y: 145 }); // miss goes to center
-    }
-
-    // Dart flight takes 400ms, then show result
     setTimeout(() => {
-      setDartFlying(false);
-      setDartTarget(null);
-
       if (isMiss) {
         setLastHit({ item: null, miss: true });
       } else {
@@ -395,25 +374,6 @@ export default function DartPage() {
             })}
           </div>
 
-          {/* Dart flying animation */}
-          <AnimatePresence>
-            {dartFlying && dartTarget && (
-              <motion.div
-                className="absolute z-30"
-                style={{ marginLeft: -14, marginTop: -24 }}
-                initial={{ left: 145, top: 320, opacity: 1, scale: 1 }}
-                animate={{ left: dartTarget.x, top: dartTarget.y, opacity: 1, scale: 0.7 }}
-                exit={{ opacity: 0, scale: 0.3 }}
-                transition={{ duration: 0.35, ease: "easeIn" }}
-              >
-                <svg width="28" height="48" viewBox="0 0 28 48">
-                  <path d="M14 0 L8 16 L2 14 L14 48 L26 14 L20 16 Z" fill="#C4622D" />
-                  <path d="M14 0 L8 16 L2 14 L14 48 L14 0 Z" fill="#A14E22" opacity="0.4" />
-                  <circle cx="14" cy="20" r="3" fill="#E8C4A0" />
-                </svg>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
         {/* Last hit feedback */}

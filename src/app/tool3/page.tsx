@@ -325,7 +325,7 @@ export default function DesiBingoPage() {
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "14px 16px",
     borderRadius: "6px", border: `2.5px solid ${DARK}`,
-    backgroundColor: "#FFFFE8", fontSize: "15px",
+    backgroundColor: "#FFF9EC", fontSize: "15px",
     fontFamily: dmSans.style.fontFamily,
     color: DARK, boxSizing: "border-box",
     boxShadow: `3px 3px 0 ${DARK}`, outline: "none",

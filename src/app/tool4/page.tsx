@@ -10,17 +10,8 @@ const pinyonScript = Pinyon_Script({ subsets: ["latin"], weight: "400" });
 
 type Step = "landing" | "step1" | "step2" | "step3" | "loading" | "step4";
 type CardStyleId = 1 | 2 | 3 | 4;
-type FlowerChoice = "tulips" | "lilies" | "jasmine" | "peonies" | "sunflowers";
 
 const MUM_NAMES = ["Maa", "Mummy", "Amma", "Mom", "Aai", "Other"] as const;
-
-const FLOWERS: { id: FlowerChoice; emoji: string; label: string }[] = [
-  { id: "tulips",     emoji: "💜", label: "Tulips"     },
-  { id: "lilies",     emoji: "🌸", label: "Lilies"     },
-  { id: "jasmine",    emoji: "🤍", label: "Jasmine"    },
-  { id: "peonies",    emoji: "🌺", label: "Peonies"    },
-  { id: "sunflowers", emoji: "🌻", label: "Sunflowers" },
-];
 
 // Maps style ID to public image path
 const CARD_BG: Record<CardStyleId, string> = {
@@ -90,80 +81,7 @@ function StyleThumbnail({
   );
 }
 
-// ─── Flower Bouquet ──────────────────────────────────────────────────────────
-
-const RIBBON_COLORS: Record<FlowerChoice, string> = {
-  tulips:     "#9B59B6",
-  lilies:     "#E8A0A0",
-  jasmine:    "#A8D5A2",
-  peonies:    "#E0607E",
-  sunflowers: "#F5C060",
-};
-
-// All 5 flowers always shown in the bouquet.
-// Each entry: { src, left, top, rotation, headSize, stemCx, stemCy }
-// stemCx/stemCy = approximate base of stem in SVG coords
-const BOUQUET_LAYOUT = [
-  { src: "/f1.png", l: 8,   t: 0,  r: -18, s: 70, cx: 43,  cy: 70  }, // tulip   — back-left
-  { src: "/f3.png", l: 80,  t: -4, r: 0,   s: 73, cx: 116, cy: 69  }, // jasmine — back-center
-  { src: "/f4.png", l: 152, t: 0,  r: 18,  s: 70, cx: 187, cy: 70  }, // peony   — back-right
-  { src: "/f2.png", l: 25,  t: 58, r: -10, s: 80, cx: 65,  cy: 138 }, // lily    — front-left
-  { src: "/f5.png", l: 125, t: 58, r: 10,  s: 80, cx: 165, cy: 138 }, // sunflower — front-right
-];
-const CONV = { x: 115, y: 200 }; // stem convergence point
-
-const FLOWER_EMOJI: Record<FlowerChoice, string> = {
-  tulips: "🌷",
-  lilies: "🌸",
-  jasmine: "🤍",
-  peonies: "🌺",
-  sunflowers: "🌻",
-};
-
-function FlowerBouquet({ flower, compact }: { flower: FlowerChoice; compact?: boolean }) {
-  const ribbon = RIBBON_COLORS[flower];
-  const maxW = compact ? "55%" : "100%";
-
-  return (
-    <div style={{ position: "relative", width: maxW, margin: "0 auto" }}>
-      {/* Watercolor bouquet — mix-blend-mode:multiply removes the white background */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/bouquet.png"
-        alt="flower bouquet"
-        style={{
-          width: "100%",
-          height: "auto",
-          objectFit: "contain",
-          mixBlendMode: "multiply",
-          display: "block",
-        }}
-      />
-      {/* Flower emoji overlay to show selection */}
-      <div style={{
-        position: "absolute",
-        top: "8%",
-        left: "50%",
-        transform: "translateX(-50%)",
-        fontSize: compact ? 28 : 36,
-        textShadow: `0 2px 8px ${ribbon}66`,
-      }}>
-        {FLOWER_EMOJI[flower]}
-      </div>
-      {/* Ribbon accent at the stem tie, colour matches selection */}
-      <svg
-        viewBox="0 0 220 30"
-        style={{ position: "absolute", bottom: "8%", left: 0, width: "100%", height: "12%", overflow: "visible" }}
-      >
-        <path d={`M88,8 Q110,2 132,8 L130,22 Q110,28 90,22 Z`} fill={ribbon} opacity="0.55" />
-        <path d={`M88,8 Q110,14 132,8`} fill="none" stroke={ribbon} strokeWidth="1.2" opacity="0.6" />
-        <path d={`M92,21 Q80,32 75,28 Q81,19 93,22`} fill={ribbon} opacity="0.65" />
-        <path d={`M128,21 Q140,32 145,28 Q139,19 127,22`} fill={ribbon} opacity="0.65" />
-        <circle cx="110" cy="22" r="4" fill={ribbon} opacity="0.85" />
-      </svg>
-    </div>
-  );
-}
+// ─── (flower selection removed — bouquet is a static image on the card) ──────
 
 // ─── Step Dots ───────────────────────────────────────────────────────────────
 
@@ -214,14 +132,12 @@ function QuillAnimation() {
 function FinalCard({
   cardStyle,
   imageDataUrl,
-  flowerChoice,
   mumName,
   poem,
   userName,
 }: {
   cardStyle: CardStyleId;
   imageDataUrl: string | null;
-  flowerChoice: FlowerChoice | null;
   mumName: string;
   poem: string;
   userName: string;
@@ -256,7 +172,7 @@ function FinalCard({
 
       {/* Content sits on top of the image, padded to stay inside frame */}
       <div
-        className="relative z-10 flex flex-col items-center h-full overflow-hidden"
+        className="relative z-10 flex flex-col items-center h-full"
         style={{ padding: `${padY}px ${padX}px` }}
       >
         {/* Title */}
@@ -273,11 +189,8 @@ function FinalCard({
           Happy Mother&apos;s Day
         </p>
 
-        {/* Image or Bouquet — capped so it never pushes poem out */}
-        <div
-          className="flex-shrink-0 flex items-center justify-center overflow-hidden"
-          style={{ width: "100%", maxHeight: "28%", marginBottom: 6 }}
-        >
+        {/* Bouquet — static, always shown, fully visible */}
+        <div className="flex-shrink-0 flex justify-center" style={{ width: "100%", marginTop: 18, marginBottom: 6 }}>
           {imageDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -285,28 +198,41 @@ function FinalCard({
               alt="Her photo"
               style={{
                 width: "100%",
-                height: "100%",
+                maxHeight: 120,
                 objectFit: "cover",
                 borderRadius: 10,
                 filter: "saturate(0.8) contrast(0.9) brightness(1.1) sepia(0.15)",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
               }}
             />
-          ) : flowerChoice ? (
-            <FlowerBouquet flower={flowerChoice} compact />
-          ) : null}
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/bouquet.png"
+              alt="bouquet"
+              style={{
+                width: "110%",
+                marginLeft: "-5%",
+                maxHeight: 195,
+                objectFit: "contain",
+                objectPosition: "bottom",
+                mixBlendMode: "multiply",
+                display: "block",
+                flexShrink: 0,
+              }}
+            />
+          )}
         </div>
 
-        {/* Poem */}
-        <div className="flex-1 flex items-center justify-center px-1 overflow-hidden">
+        {/* Poem — flex-1 so it always fills remaining space; font small enough to never overflow */}
+        <div className="flex-1 flex items-center justify-center px-1">
           <p
             className="text-center"
             style={{
               fontFamily: pinyonScript.style.fontFamily,
-              fontSize: 15,
+              fontSize: 13,
               color: "#2a1a1a",
               whiteSpace: "pre-line",
-              lineHeight: 1.45,
+              lineHeight: 1.65,
             }}
           >
             {poem}
@@ -366,9 +292,7 @@ export default function MothersDayCardPage() {
     }
   }, []);
   const [cardStyle, setCardStyle] = useState<CardStyleId>(1);
-  const [imageMode, setImageMode] = useState<"photo" | "flowers" | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
-  const [flowerChoice, setFlowerChoice] = useState<FlowerChoice | null>(null);
   const [selectedMumTag, setSelectedMumTag] = useState<string>("Maa");
   const [customMumName, setCustomMumName] = useState("");
   const [trait, setTrait] = useState("");
@@ -404,16 +328,8 @@ export default function MothersDayCardPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setImageDataUrl(ev.target?.result as string);
-      setImageMode("photo");
-    };
+    reader.onload = (ev) => setImageDataUrl(ev.target?.result as string);
     reader.readAsDataURL(file);
-  }
-
-  function handleFlowerSelect(flower: FlowerChoice) {
-    setFlowerChoice(flower);
-    setImageMode("flowers");
   }
 
   async function handleGenerate(e: React.FormEvent) {
@@ -454,9 +370,7 @@ export default function MothersDayCardPage() {
   function handleReset() {
     setStep("landing");
     setCardStyle(1);
-    setImageMode(null);
     setImageDataUrl(null);
-    setFlowerChoice(null);
     setSelectedMumTag("Maa");
     setCustomMumName("");
     setTrait("");
@@ -549,106 +463,75 @@ export default function MothersDayCardPage() {
           </motion.div>
         )}
 
-        {/* ── STEP 2: Image or Flowers ── */}
+        {/* ── STEP 2: Optional photo ── */}
         {step === "step2" && (
           <motion.div key="step2" {...slide} className="w-full max-w-sm">
             <StepDots current={2} />
             <div className="text-center mb-6">
               <h2 className="font-display text-3xl text-[#2a1a1a] leading-tight mb-2">
-                Add something beautiful
+                Personalise her card
               </h2>
-              <p className="text-[#8a8580] text-sm">A photo of her, or pick her favourite flowers.</p>
+              <p className="text-[#8a8580] text-sm">
+                Add her photo to make it extra special — or skip and the bouquet will shine on its own.
+              </p>
             </div>
-            <div className="space-y-4">
-              {/* Photo upload */}
-              <div
-                className="rounded-2xl p-5 border-2 cursor-pointer transition-all"
-                style={{
-                  borderColor: imageMode === "photo" ? "#E8A0A0" : "#E8E2DA",
-                  backgroundColor: imageMode === "photo" ? "#FFF5F5" : "white",
-                }}
-                onClick={() => fileRef.current?.click()}
-              >
-                <p className="font-medium text-[#2a1a1a] mb-1">Upload her photo</p>
-                <p className="text-sm text-[#8a8580] mb-3">We&apos;ll give it a warm, painted feel</p>
-                {imageDataUrl ? (
-                  <div>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={imageDataUrl}
-                      alt="Preview"
-                      className="w-full h-28 object-cover rounded-xl"
-                      style={{ filter: "saturate(0.8) contrast(0.9) brightness(1.1) sepia(0.15)" }}
-                    />
-                    <p className="text-xs text-[#E8A0A0] mt-2 text-center">Looking beautiful ✓</p>
-                  </div>
-                ) : (
-                  <div
-                    className="rounded-xl border-2 border-dashed h-14 flex items-center justify-center"
-                    style={{ borderColor: "#E8E2DA" }}
-                  >
-                    <span className="text-sm text-[#8a8580]">Tap to upload JPG / PNG</span>
-                  </div>
-                )}
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                />
+
+            <div
+              className="rounded-2xl p-5 border-2 cursor-pointer transition-all"
+              style={{
+                borderColor: imageDataUrl ? "#E8A0A0" : "#E8E2DA",
+                backgroundColor: imageDataUrl ? "#FFF5F5" : "white",
+              }}
+              onClick={() => fileRef.current?.click()}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <p className="font-medium text-[#2a1a1a]">Add her photo</p>
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "#F0EBE3", color: "#8a8580" }}>Optional</span>
               </div>
-
-              {/* Flower picker */}
-              <div
-                className="rounded-2xl p-5 border-2 transition-all"
-                style={{
-                  borderColor: imageMode === "flowers" ? "#E8A0A0" : "#E8E2DA",
-                  backgroundColor: imageMode === "flowers" ? "#FFF5F5" : "white",
-                }}
-              >
-                <p className="font-medium text-[#2a1a1a] mb-1">Choose her flowers</p>
-                <p className="text-sm text-[#8a8580] mb-3">Pick her favourite bouquet</p>
-
-                {/* Preview selected bouquet */}
-                {flowerChoice && imageMode === "flowers" && (
-                  <div className="flex justify-center mb-3">
-                    <FlowerBouquet flower={flowerChoice} />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-5 gap-2">
-                  {FLOWERS.map((f) => (
-                    <button
-                      key={f.id}
-                      onClick={() => handleFlowerSelect(f.id)}
-                      className="flex flex-col items-center gap-1 py-2 rounded-xl border-2 transition-all cursor-pointer"
-                      style={{
-                        borderColor: flowerChoice === f.id ? "#E8A0A0" : "#E8E2DA",
-                        backgroundColor: flowerChoice === f.id ? "#FFF0F0" : "#FAFAFA",
-                      }}
-                    >
-                      <span className="text-2xl">{f.emoji}</span>
-                      <span className="text-[10px] text-[#2a1a1a] font-medium leading-tight text-center">{f.label}</span>
-                    </button>
-                  ))}
+              <p className="text-sm text-[#8a8580] mb-3">We&apos;ll give it a warm, painted feel</p>
+              {imageDataUrl ? (
+                <div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageDataUrl}
+                    alt="Preview"
+                    className="w-full h-28 object-cover rounded-xl"
+                    style={{ filter: "saturate(0.8) contrast(0.9) brightness(1.1) sepia(0.15)" }}
+                  />
+                  <p className="text-xs text-[#E8A0A0] mt-2 text-center">Looking beautiful ✓</p>
                 </div>
-              </div>
+              ) : (
+                <div
+                  className="rounded-xl border-2 border-dashed h-14 flex items-center justify-center"
+                  style={{ borderColor: "#E8E2DA" }}
+                >
+                  <span className="text-sm text-[#8a8580]">Tap to upload JPG / PNG</span>
+                </div>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
             </div>
 
-            <AnimatePresence>
-              {imageMode && (
-                <motion.button
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  onClick={() => setStep("step3")}
-                  className="w-full mt-5 py-4 rounded-2xl font-medium text-[15px] active:scale-[0.98] transition-all cursor-pointer"
-                  style={{ backgroundColor: "#E8A0A0", color: "#FDF6E3" }}
-                >
-                  Continue →
-                </motion.button>
-              )}
-            </AnimatePresence>
+            <button
+              onClick={() => setStep("step3")}
+              className="w-full mt-5 py-4 rounded-2xl font-medium text-[15px] active:scale-[0.98] transition-all cursor-pointer"
+              style={{ backgroundColor: "#E8A0A0", color: "#FDF6E3" }}
+            >
+              Continue →
+            </button>
+            {imageDataUrl && (
+              <button
+                onClick={() => { setImageDataUrl(null); }}
+                className="w-full mt-2 text-sm text-[#8a8580] hover:text-[#2a1a1a] transition py-2 cursor-pointer"
+              >
+                Remove photo
+              </button>
+            )}
           </motion.div>
         )}
 
@@ -739,7 +622,6 @@ export default function MothersDayCardPage() {
             <FinalCard
               cardStyle={cardStyle}
               imageDataUrl={imageDataUrl}
-              flowerChoice={flowerChoice}
               mumName={mumName}
               poem={poem}
               userName={name}
